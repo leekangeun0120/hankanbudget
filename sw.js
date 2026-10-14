@@ -1,5 +1,5 @@
-const CACHE="hankanbudget-v4";
-const FILES=["./","./index.html","./manifest.webmanifest","./icon-192.png","./icon-512.png"];
+const CACHE="hankanbudget-v5";
+const FILES=["./","./index.html","./manifest.webmanifest","./icon-192.png","./icon-512.png","./icon-maskable-512.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
 // 새 버전을 먼저 받아오고, 인터넷이 안 되면 저장해둔 걸 보여줌
