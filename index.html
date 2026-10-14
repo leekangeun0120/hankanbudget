@@ -182,6 +182,44 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
 .fshead .label{margin:0}
 .xclose{display:none}
 .fab,.tabbar,.scrim{display:none}
+.addform{display:flex;flex-direction:column;gap:8px}
+.addform #amt{flex:1 1 120px}.addform #memo{flex:2 1 150px}
+.memohint{font-size:.78rem;color:var(--accent);min-height:0}
+.memohint:empty{display:none}
+.favs{display:flex;flex-wrap:wrap;gap:6px}
+.favs:empty{display:none}
+.fav{border:1px dashed var(--line);background:var(--sheet);border-radius:999px;padding:4px 10px;font-size:.8rem;display:inline-flex;gap:6px;align-items:center}
+.fav i{width:8px;height:8px;border-radius:50%;background:var(--sw)}
+.fav b{font-family:var(--f-num);font-weight:500;color:var(--muted)}
+.catchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:5px}
+.cchip{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--sheet);border-radius:8px;padding:6px 8px;font-size:.84rem;text-align:left;min-width:0}
+.cchip i{flex:0 0 12px;width:12px;height:12px;border-radius:3px;background:var(--sw)}
+.cchip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cchip[aria-checked="true"]{border-color:var(--sw);box-shadow:inset 0 0 0 2px var(--sw);font-weight:600}
+.daybtns button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.addform #day{flex:1 1 130px}
+.palhead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.palhead .label{margin:0}
+.paintTgl{font-size:.78rem;padding:4px 10px;color:var(--muted)}
+.paintTgl[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.daypanel{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.daypanel:empty{display:none}
+.dphead{display:flex;justify-content:space-between;align-items:baseline;font-size:.92rem;margin-bottom:4px}
+.dphead b{font-family:var(--f-num);font-weight:500}
+.cal button.sel{outline:2px solid var(--accent);outline-offset:1px}
+.compare{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.compare:empty{display:none}
+.cmpgrids{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cmpgrids h3{font-size:.85rem;font-weight:400;margin:0 0 6px;color:var(--muted)}
+.cmpgrids h3 b{color:var(--ink);font-family:var(--f-num);font-weight:600}
+.mgrid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:2px}
+.mcell{position:relative;aspect-ratio:1;background:var(--cell);border-radius:2px;overflow:hidden}
+.mcell span{position:absolute;inset:0;background:var(--fill,transparent)}
+.mcell .h1{clip-path:polygon(0 0,0 100%,100% 100%)}.mcell .h2{clip-path:polygon(0 0,100% 0,100% 100%)}
+body.half-vert .mcell .h1{clip-path:polygon(0 0,50% 0,50% 100%,0 100%)}body.half-vert .mcell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
+.cmptop{font-size:.82rem;margin-top:8px;display:flex;flex-direction:column;gap:2px}
+.cmptop .up{color:var(--up)}.cmptop .down{color:var(--down)}
+.bknag{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--evbg);border:1px solid var(--evline);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.88rem}
 .snack{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--sheet);padding:10px 16px;border-radius:999px;font-size:.88rem;z-index:50;transition:opacity .2s,transform .2s;max-width:calc(100% - 32px)}
 .snack.on{opacity:1;transform:translate(-50%,0)}
 @media (min-width:821px){.snack{bottom:24px}}
@@ -247,6 +285,11 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
       <button class="ghost" id="openSet" aria-label="예산·카테고리 설정"><span class="lg">예산·카테고리 </span>설정</button>
     </div>
   </header>
+
+  <div class="bknag" id="bkNag" hidden>
+    <span id="bkNagTxt"></span>
+    <span class="row"><button class="primary" id="bkNow">지금 백업하기</button><button class="linkbtn" id="bkLater" style="color:var(--muted)">나중에</button></span>
+  </div>
 
   <section class="sheet welcome" id="welcome" hidden>
     <h2>한칸한칸을 시작해볼까요?</h2>
@@ -330,7 +373,7 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
         <div class="rowmark"><span>예산 초과 · 비상금에서 쓴 칸</span><button class="linkbtn" id="closeOver">닫기</button></div>
         <div class="grid" id="ogrid"></div>
       </div>
-      <p class="hint">칸을 한 번 누르면 반칸, 한 번 더 누르면 한 칸이 칠해져요. 반칸 두 개를 다른 색으로 칠할 수도 있어요. <span id="paceHint"></span></p>
+      <p class="hint">지출은 ＋ 지출 적기(PC는 오른쪽 입력칸)로 적으면 자동으로 칠해져요. 색연필 옆 '손으로 칠하기'를 켜면 칸을 눌러 직접 칠할 수도 있어요(한 번 누르면 반칸, 두 번이면 한 칸). <span id="paceHint"></span></p>
 
       <button class="ghost openOver" id="openEv"></button>
       <div class="evzone" id="evzone" hidden>
@@ -352,20 +395,30 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
 
     <aside class="side">
       <section class="sheet" data-tabs="grid">
-        <p class="label">색연필 고르기</p>
+        <div class="palhead"><p class="label">색연필 고르기</p><button class="ghost paintTgl" id="paintTgl" aria-pressed="false"></button></div>
         <div class="pal" id="pal"></div>
       </section>
 
       <section class="sheet formsheet" id="formSheet" data-tabs="form">
         <div class="fshead"><p class="label" id="formTitle">금액으로 칠하기</p><button class="ghost xclose" id="xForm" aria-label="입력 닫기">닫기</button></div>
-        <form class="row" id="addForm">
-          <input id="amt" inputmode="numeric" placeholder="금액 예: 12500" aria-label="금액(원)">
-          <select id="cat" aria-label="카테고리"></select>
-          <input id="memo" maxlength="30" placeholder="메모 (예: 올리브영)" aria-label="메모">
-          <input id="day" type="date" aria-label="날짜">
-          <label class="evchk" for="isEv"><input type="checkbox" id="isEv"> 이벤트비</label>
-          <button class="primary" type="submit" id="submitBtn">칠하기</button>
-          <button class="ghost" type="button" id="cancelEdit" hidden>수정 취소</button>
+        <form id="addForm" class="addform" autocomplete="off">
+          <div class="row">
+            <input id="amt" inputmode="numeric" placeholder="금액 예: 12500" aria-label="금액(원)">
+            <input id="memo" maxlength="30" placeholder="메모 (예: 메가커피)" aria-label="메모">
+          </div>
+          <div class="memohint" id="memoHint"></div>
+          <div class="favs" id="favs"></div>
+          <div class="catchips" id="catChips" role="radiogroup" aria-label="카테고리"></div>
+          <select id="cat" aria-label="카테고리" hidden></select>
+          <div class="row">
+            <div class="seg daybtns"><button type="button" id="dToday">오늘</button><button type="button" id="dYest">어제</button></div>
+            <input id="day" type="date" aria-label="날짜">
+            <label class="evchk" for="isEv"><input type="checkbox" id="isEv"> 이벤트비</label>
+          </div>
+          <div class="row">
+            <button class="primary" type="submit" id="submitBtn">칠하기</button>
+            <button class="ghost" type="button" id="cancelEdit" hidden>수정 취소</button>
+          </div>
         </form>
         <p class="hint" id="pending"></p>
         <div class="toast" id="toast" role="status"></div>
@@ -374,6 +427,7 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
       <section class="sheet" data-tabs="cal">
         <p class="label">무지출 달력</p>
         <div class="cal" id="cal"></div>
+        <div class="daypanel" id="dayPanel"></div>
         <p class="hint" id="calNote"></p>
       </section>
 
@@ -382,6 +436,7 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
         <div class="bars" id="bars"></div>
         <p class="hint" id="cmpNote"></p>
         <div class="row" style="margin-top:12px"><button class="ghost" id="makeCard">회고 카드 이미지 만들기</button></div>
+        <div class="compare" id="compare"></div>
         <div id="cardBox" hidden>
           <img id="cardImg" alt="이번 달 한칸한칸 회고 카드">
           <div class="row"><button class="ghost" id="copyCard">이미지 복사</button><button class="ghost" id="closeCard">닫기</button></div>
@@ -491,6 +546,7 @@ function load(){
   if(state.cells.length!==Nn())resize(Nn());
   {const c0=state.cfg.cats.find(c=>!c.sep)||state.cfg.cats[0];tool=c0?c0.id:ERASER}
   history=[];overOpen=false;evOpen=false;if(typeof editingId!=="undefined"&&editingId!==null)endEdit();$("settings").hidden=true;$("cardBox").hidden=true;
+  BOOK=memoBook();selDay=isCurMonth()?new Date().getDate():null;
   const first=`${ym[0]}-${pad(ym[1])}-01`,last=`${ym[0]}-${pad(ym[1])}-${pad(daysIn())}`;
   $("day").min=first;$("day").max=last;$("day").value=isCurMonth()?todayStr():first;
   render();
@@ -517,7 +573,10 @@ function buildGrid(){
   }
 }
 document.addEventListener("click",e=>{const b=e.target.closest(".cell");if(!b)return;if(b.dataset.e!==undefined){toast("이벤트비는 '금액으로 칠하기'에서 이벤트비에 체크하고 적어요.");return}paint(+b.dataset.i)});
+let paintOn=!matchMedia("(max-width:820px)").matches;
+function syncPaintTgl(){const b=$("paintTgl");b.setAttribute("aria-pressed",paintOn);b.textContent=paintOn?"손으로 칠하기 켜짐":"손으로 칠하기 꺼짐"}
 function paint(i){
+  if(!paintOn){showMsg("칸을 직접 칠하려면 색연필 옆 '손으로 칠하기'를 켜주세요. 보통은 ＋ 지출 적기로 적으면 돼요.");return}
   if(state.sorted){toast("색깔별로 모아보는 중에는 칸을 칠할 수 없어요. '날짜순으로 되돌리기'를 누른 뒤 칠해주세요.","toast",true);return}
   if(tool>=0&&cat(tool)&&cat(tool).sep){toast(`${cat(tool).n}은 따로 세는 카테고리예요. '금액으로 칠하기'로 적으면 따로 칸판에 칠해져요.`,"toast",true);return}
   let c=state.cells[i];
@@ -585,7 +644,8 @@ function render(){
     pal.lastElementChild.querySelector(".nm").textContent=c.n});
   pal.insertAdjacentHTML("beforeend",`<button class="chip eraser${tool===ERASER?" on":""}" data-k="${ERASER}"><span class="sw"></span><span class="nm">지우개</span><span class="ct"></span></button>`);
   const sel=$("cat");const sv=sel.value;sel.innerHTML="";cfg.cats.forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.n;sel.appendChild(o)});
-  if(tool>=0)sel.value=tool;else if(sv&&cat(+sv))sel.value=sv;
+  if(sv&&cat(+sv))sel.value=sv;else if(tool>=0)sel.value=tool;
+  renderCatChips();renderFavs();syncPaintTgl();syncDayBtns();
 
   const prev=prevSpend();
   $("barLabel").textContent=B?"카테고리별 회고 (칠한 칸 / 예산 칸)":"카테고리별 회고 (칠한 칸 · 비율)";
@@ -598,7 +658,7 @@ function render(){
   $("cmpNote").textContent=prev?"오른쪽 끝 숫자는 지난달보다 늘거나 준 금액이에요.":"지난달 기록이 있으면 카테고리별로 얼마나 늘었는지도 보여줘요.";
 
   const p=cfg.cats.filter(c=>state.pending[c.id]).map(c=>`${c.n} ${won(state.pending[c.id])}원`);
-  renderLog();renderCal();
+  renderLog();renderCal();renderCompare();checkBackupNag();
   $("pending").textContent=p.length?`모아둔 잔돈: ${p.join(" · ")}`:`${won(u/2)}원이 안 되는 돈은 모아뒀다가 다 차면 반칸을 칠해요.`;
 }
 /* 내역을 고치면: 손으로 칠한 칸은 그대로 두고, 내역으로 칠한 칸은 날짜순으로 다시 칠함 */
@@ -613,14 +673,101 @@ function rebuildWith(mutate){
 let editingId=null;
 function startEdit(id){const e=state.log.find(x=>x.id===id);if(!e)return;
   if(!cat(e.k)){toast("삭제된 카테고리의 내역은 고칠 수 없어요. 지우고 다시 적어주세요.","toast",true);return}
-  editingId=id;$("amt").value=e.v;$("cat").value=e.k;$("memo").value=e.m||"";$("day").value=e.d;$("isEv").checked=!!e.e;
+  editingId=id;$("amt").value=e.v;$("cat").value=e.k;$("memo").value=e.m||"";$("day").value=e.d;$("isEv").checked=!!e.e;catPicked=true;renderCatChips();renderFavs();syncDayBtns();$("memoHint").textContent="";
   $("submitBtn").textContent="수정하기";$("cancelEdit").hidden=false;$("formTitle").textContent="지출 고치기";$("formSheet").classList.add("editing");
   document.querySelectorAll(".lrow").forEach(r=>r.classList.toggle("editing",+r.dataset.id===id));
   if(matchMedia("(max-width:820px)").matches)openForm();else{$("formSheet").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>{try{$("amt").focus()}catch(_){}},200)}}
 function endEdit(){editingId=null;$("amt").value="";$("memo").value="";$("isEv").checked=false;
   $("submitBtn").textContent="칠하기";$("cancelEdit").hidden=true;$("formTitle").textContent="금액으로 칠하기";$("formSheet").classList.remove("editing");
   document.querySelectorAll(".lrow.editing").forEach(r=>r.classList.remove("editing"));
-  if(isCurMonth())$("day").value=todayStr();}
+  if(isCurMonth())$("day").value=todayStr();resetFormExtras();}
+/* ---- 입력창: 카테고리 버튼 ---- */
+let catPicked=false;
+function renderCatChips(){const box=$("catChips"),cur=+$("cat").value;box.innerHTML="";
+  state.cfg.cats.forEach(c=>{const b=document.createElement("button");b.type="button";b.className="cchip";b.setAttribute("role","radio");
+    b.setAttribute("aria-checked",c.id===cur);b.style.setProperty("--sw",c.c);b.innerHTML="<i></i><span></span>";b.lastChild.textContent=c.n+(c.sep?" (따로)":"");
+    b.onclick=()=>{$("cat").value=c.id;catPicked=true;$("memoHint").textContent="";renderCatChips()};box.appendChild(b)})}
+/* ---- 메모 기억: 메모 → 카테고리·금액 (모든 달 내역에서 배움) ---- */
+const baseMemo=m=>String(m||"").replace(/\(.*?\)|\[.*?\]/g,"").replace(/\s+/g," ").trim();
+const normMemo=m=>baseMemo(m).toLowerCase();
+function memoBook(){const book={};
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!/^color-budget:\d{4}-\d{2}$/.test(k))continue;
+    const st=JSON.parse(localStorage.getItem(k));if(!st||!st.log)continue;const names={};(st.cfg.cats||[]).forEach(c=>names[c.id]=c.n);
+    st.log.forEach(e=>{const m=normMemo(e.m);if(!m||!names[e.k])return;const b=book[m]||(book[m]={memo:baseMemo(e.m),n:0,last:"",cats:{},evn:0});if(e.e)b.evn++;
+      b.n++;b.cats[names[e.k]]=(b.cats[names[e.k]]||0)+1;if(e.d>=b.last){b.last=e.d;b.v=e.v;b.ev=!!e.e}})}}catch(_){}
+  if(state&&state.log&&!get(key()))state.log.forEach(e=>{const m=normMemo(e.m);if(!m||!cat(e.k))return;const b=book[m]||(book[m]={memo:baseMemo(e.m),n:0,last:"",cats:{},evn:0});if(e.e)b.evn++;
+    b.n++;b.cats[cat(e.k).n]=(b.cats[cat(e.k).n]||0)+1;if(e.d>=b.last){b.last=e.d;b.v=e.v;b.ev=!!e.e}});
+  for(const m in book){const b=book[m];b.cat=Object.keys(b.cats).sort((x,y)=>b.cats[y]-b.cats[x])[0]}
+  return book}
+let BOOK={};
+function suggestFromMemo(){const m=normMemo($("memo").value);const hint=$("memoHint");
+  if(catPicked||m.length<2){if(!catPicked)hint.textContent="";return}
+  let hit=BOOK[m];if(!hit){const ks=Object.keys(BOOK).filter(k=>k.startsWith(m)||m.startsWith(k));ks.sort((a,b)=>BOOK[b].n-BOOK[a].n);hit=ks.length?BOOK[ks[0]]:null}
+  const c=hit&&state.cfg.cats.find(x=>x.n===hit.cat);
+  if(c){$("cat").value=c.id;renderCatChips();hint.textContent=`'${hit.memo}'은 보통 ${c.n}에 적었어요. 다르면 아래에서 바꿔주세요.`}else hint.textContent=""}
+function renderFavs(){const box=$("favs");if(editingId!==null){box.innerHTML="";return}
+  const list=Object.values(BOOK).filter(b=>b.n>=2&&b.evn<b.n&&state.cfg.cats.some(c=>c.n===b.cat)).sort((a,b)=>b.n-a.n||b.last.localeCompare(a.last)).slice(0,6);
+  box.innerHTML=list.length?'<span class="label" style="margin:0;align-self:center">자주 쓰는 지출</span>':"";
+  list.forEach(f=>{const c=state.cfg.cats.find(x=>x.n===f.cat);const b=document.createElement("button");b.type="button";b.className="fav";b.style.setProperty("--sw",c.c);
+    b.innerHTML="<i></i><span></span><b></b>";b.children[1].textContent=f.memo;b.children[2].textContent=won(f.v);
+    b.onclick=()=>{$("memo").value=f.memo;$("amt").value=f.v;$("cat").value=c.id;$("isEv").checked=!!f.ev;catPicked=true;renderCatChips();
+      $("memoHint").textContent=`지난번처럼 ${c.n} ${won(f.v)}원으로 채웠어요. 금액이 다르면 고치고 칠하기를 눌러요.`;try{$("amt").focus();$("amt").select()}catch(_){}};
+    box.appendChild(b)})}
+function syncDayBtns(){const v=$("day").value,t=todayStr(),y=new Date();y.setDate(y.getDate()-1);
+  const ys=`${y.getFullYear()}-${pad(y.getMonth()+1)}-${pad(y.getDate())}`;
+  $("dToday").setAttribute("aria-pressed",v===t);$("dYest").setAttribute("aria-pressed",v===ys);return ys}
+function resetFormExtras(){catPicked=false;$("memoHint").textContent="";renderCatChips();renderFavs();syncDayBtns()}
+/* ---- 예산 알림: 80%·100%를 넘는 순간 알려줌 ---- */
+function budgetAlert(k,pre,sep){const c=cat(k),u=state.cfg.unit,B=state.cfg.mode!=="free";let msg=null,bad=false;
+  const cross=(b0,b1,L,name)=>{if(L<=0)return;if(b0<=L&&b1>L){msg=`${name} 예산을 넘었어요 (${fmtC(b1)}/${fmtN(L/2)}칸)`;bad=true}else if(!bad&&b0<L*.8&&b1>=L*.8){msg=`${name} 예산의 80%를 썼어요 (${fmtC(b1)}/${fmtN(L/2)}칸)`}};
+  if(sep){if(c.b>0)cross(pre.ev,state.ev.filter(x=>x===k).length,c.b/u*2,c.n)}
+  else{if(B&&c.b>0)cross(pre.h[k]||0,counts()[k]||0,c.b/u*2,c.n);
+    if(!msg)cross(pre.tot,allHalves(state.cells).length,MAINn()*2,"이번 달")}
+  if(msg){showMsg(msg);toast(msg,"toast",bad)}}
+/* ---- 백업 알림 ---- */
+function backupText(){const data={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PFX))data[k]=localStorage.getItem(k)}}catch(e){}
+  return Object.keys(data).length?"한칸한칸백업:"+btoa(unescape(encodeURIComponent(JSON.stringify(data)))):null}
+function markBackup(){put(PFX+"lastBackup",todayStr());$("bkNag").hidden=true}
+function checkBackupNag(){
+  let entries=0;try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^color-budget:\d{4}-\d{2}$/.test(k)){const st=JSON.parse(localStorage.getItem(k));entries+=(st.log||[]).length+allHalves(st.cells||[]).length}}}catch(e){}
+  const last=get(PFX+"lastBackup"),snooze=get(PFX+"bkSnooze"),t=todayStr();
+  if(snooze&&snooze>t){$("bkNag").hidden=true;return}
+  const days=last?Math.round((new Date(t)-new Date(last))/864e5):null,now=new Date(),monthEnd=now.getDate()>=new Date(now.getFullYear(),now.getMonth()+1,0).getDate()-2;
+  let msg=null;
+  if(entries>=10&&days===null)msg="아직 한 번도 백업하지 않았어요. 기록은 이 기기에만 있어서, 폰을 바꾸거나 인터넷 기록을 지우면 사라져요.";
+  else if(days!==null&&days>=14)msg=`마지막 백업이 ${days}일 전이에요. 한 번 백업해 둘까요?`;
+  else if(days!==null&&monthEnd&&days>=3)msg=`이번 달이 곧 끝나요. 마지막 백업이 ${days}일 전이에요.`;
+  $("bkNagTxt").textContent=msg||"";$("bkNag").hidden=!msg}
+/* ---- 달력: 날짜를 누르면 그날 내역 ---- */
+let selDay=null;
+function renderDayPanel(){const box=$("dayPanel");if(!selDay){box.innerHTML="";return}
+  const d=selDay,ds=`${ym[0]}-${pad(ym[1])}-${pad(d)}`,list=state.log.filter(e=>e.d===ds).sort((a,b)=>a.id-b.id),sum=list.reduce((a,e)=>a+e.v,0),ns=state.ns.includes(d);
+  const wk=["일","월","화","수","목","금","토"][new Date(ym[0],ym[1]-1,d).getDay()];
+  box.innerHTML=`<div class="dphead"><span>${ym[1]}월 ${d}일 (${wk})</span><b>${list.length?won(sum)+"원":ns?"무지출":""}</b></div>`;
+  list.forEach(e=>{const c=cat(e.k);const r=document.createElement("div");r.className="lrow";r.style.setProperty("--sw",c?c.c:"#999");
+    r.innerHTML=`<span class="dot"></span><span class="t"><span></span><small></small></span><span class="a">${won(e.v)}</span><button class="ed" aria-label="이 내역 고치기">✎</button><span></span>`;
+    r.querySelector(".t span").textContent=e.m||(c?c.n:"삭제된 카테고리");r.querySelector(".t small").textContent=e.m&&c?c.n:"";
+    if(e.e)r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">이벤트비</span>');else if(routeSep(e))r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">따로</span>');
+    r.querySelector(".ed").onclick=()=>startEdit(e.id);r.querySelector(".t").onclick=()=>startEdit(e.id);box.appendChild(r)});
+  const row=document.createElement("div");row.className="row";row.style.marginTop="8px";
+  if(!list.length){const nb=document.createElement("button");nb.className="ghost";nb.textContent=ns?"무지출 표시 지우기":"이 날은 무지출이에요";
+    nb.onclick=()=>{snap();touch();state.ns=ns?state.ns.filter(x=>x!==d):[...state.ns,d];save();render()};row.appendChild(nb)}
+  const ab=document.createElement("button");ab.className="ghost";ab.textContent="이 날짜로 지출 적기";
+  ab.onclick=()=>{if(editingId!==null)endEdit();$("day").value=ds;syncDayBtns();if(matchMedia("(max-width:820px)").matches)openForm();else{$("formSheet").scrollIntoView({behavior:"smooth",block:"center"});try{$("amt").focus()}catch(_){}}};
+  row.appendChild(ab);box.appendChild(row)}
+/* ---- 지난달과 나란히 ---- */
+function miniGrid(st){const g=document.createElement("div");g.className="mgrid";const names={};(st.cfg.cats||[]).forEach(c=>names[c.id]=c.c);
+  const main=Math.ceil(st.cfg.total/st.cfg.unit);
+  st.cells.slice(0,main).forEach(c=>{const m=document.createElement("div");m.className="mcell";m.innerHTML='<span class="h1"></span><span class="h2"></span>';
+    if(c[0]>=0)m.children[0].style.setProperty("--fill",names[c[0]]||"#999");if(c[1]>=0)m.children[1].style.setProperty("--fill",names[c[1]]||"#999");g.appendChild(m)});return g}
+function renderCompare(){const box=$("compare");const [py,pm]=prevYm();const ps=get(mkey(py,pm));
+  if(!ps||!ps.cfg||!Array.isArray(ps.cells)){box.innerHTML=`<p class="label">지난달과 나란히</p><p class="hint" style="margin:0">${pm}월 기록이 생기면 여기에서 ${pm}월과 ${ym[1]}월 칸판을 나란히 볼 수 있어요.</p>`;return}
+  const half=st=>st.cfg.unit/2,won2=st=>allHalves(st.cells).length*half(st)+Object.values(st.pending||{}).reduce((a,b)=>a+b,0);
+  box.innerHTML=`<p class="label">지난달과 나란히</p><div class="cmpgrids"><div><h3>${pm}월 · <b>${fmtC(allHalves(ps.cells).length)}</b>칸 · ${man(won2(ps))}원</h3></div><div><h3>${ym[1]}월 · <b>${fmtC(allHalves(state.cells).length)}</b>칸 · ${man(won2(state))}원</h3></div></div><div class="cmptop" id="cmpTop"></div>`;
+  const cols=box.querySelectorAll(".cmpgrids>div");cols[0].appendChild(miniGrid(ps));cols[1].appendChild(miniGrid(state));
+  const prev=prevSpend()||{},now={};state.cfg.cats.filter(c=>!c.sep).forEach(c=>now[c.n]=(counts()[c.id]||0)*state.cfg.unit/2+(state.pending[c.id]||0));
+  const diffs=Object.keys(now).filter(n=>n in prev).map(n=>[n,now[n]-prev[n]]).filter(x=>Math.abs(x[1])>=state.cfg.unit).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,3);
+  $("cmpTop").innerHTML=diffs.map(([n,d])=>`<span class="${d>0?"up":"down"}">${n} ${d>0?"+":"−"}${man(Math.abs(d))}원 ${d>0?"늘었어요":"줄었어요"}</span>`).join("")||(Object.keys(prev).length?'<span style="color:var(--muted)">카테고리별로 큰 차이는 없어요.</span>':"")}
 function renderEv(){
   const ev=state.sorted?state.cfg.cats.flatMap(c=>state.ev.filter(k=>k===c.id)).concat(state.ev.filter(k=>!cat(k))):state.ev;
   const has=ev.length||Object.keys(state.epend).length;const tot=evWon();
@@ -666,19 +813,23 @@ function renderCal(){
   const byDay={};state.log.forEach(e=>{const d=+e.d.slice(8);byDay[d]=(byDay[d]||0)+e.v});
   const now=new Date(),cm=isCurMonth(),past=new Date(ym[0],ym[1],0)<now;
   for(let d=1;d<=daysIn();d++){const b=document.createElement("button");const ns=state.ns.includes(d);
-    b.className=(byDay[d]?"spent":"")+(ns?" ns":"")+(cm&&d===now.getDate()?" today":"")+((cm&&d>now.getDate())||(!cm&&!past)?" future":"");
+    b.className=(byDay[d]?"spent":"")+(ns?" ns":"")+(cm&&d===now.getDate()?" today":"")+((cm&&d>now.getDate())||(!cm&&!past)?" future":"")+(d===selDay?" sel":"");
     b.innerHTML=`${d}<small>${ns?"무지출":byDay[d]?man(byDay[d]):""}</small>`;
     b.setAttribute("aria-label",`${ym[1]}월 ${d}일`+(ns?" 무지출":byDay[d]?` ${won(byDay[d])}원 지출`:""));
-    b.onclick=()=>{if(byDay[d]&&!ns){toast(`${d}일은 쓴 내역이 있어서 무지출로 표시할 수 없어요.`,"toast",true);return}
-      snap();touch();state.ns=ns?state.ns.filter(x=>x!==d):[...state.ns,d];save();render()};
+    b.onclick=()=>{selDay=d;renderCal()};
     box.appendChild(b)}
-  const n=state.ns.length;$("calNote").textContent=n?`이번 달 무지출 ${n}일. 돈을 안 쓴 날을 눌러 표시해요.`:"돈을 한 푼도 안 쓴 날을 눌러 표시해요. 내역을 적은 날은 쓴 금액이 보여요.";
+  renderDayPanel();const n=state.ns.length;$("calNote").textContent=n?`이번 달 무지출 ${n}일. 날짜를 누르면 그날 쓴 내역을 보고, 무지출로 표시할 수 있어요.`:"돈을 한 푼도 안 쓴 날을 눌러 표시해요. 내역을 적은 날은 쓴 금액이 보여요.";
 }
 function showMsg(m){let el=$("snack");if(!el){el=document.createElement("div");el.id="snack";el.className="snack";el.setAttribute("role","status");document.body.appendChild(el)}
   el.textContent=m;el.classList.add("on");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("on"),2600)}
 let tt;function toast(m,el="toast",err=false){const e=$(el);e.textContent=m;e.classList.toggle("err",err);clearTimeout(e._t);e._t=setTimeout(()=>e.textContent="",4000)}
 
-$("pal").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;tool=+b.dataset.k;if(tool>=0)$("cat").value=tool;render()});
+$("pal").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;tool=+b.dataset.k;render()});
+$("paintTgl").onclick=()=>{paintOn=!paintOn;syncPaintTgl();showMsg(paintOn?"이제 칸을 눌러 직접 칠할 수 있어요. 다 칠했으면 다시 꺼두세요.":"칸을 눌러도 칠해지지 않아요.")};
+$("memo").addEventListener("input",suggestFromMemo);
+$("dToday").onclick=()=>{if(!isCurMonth()){toast("오늘은 이번 달이 아니에요. 위의 ‹ › 로 이번 달로 옮겨주세요.","toast",true);return}$("day").value=todayStr();syncDayBtns()};
+$("dYest").onclick=()=>{const ys=syncDayBtns();if(!ys.startsWith(`${ym[0]}-${pad(ym[1])}`)){toast("어제는 이 달이 아니에요. 위의 ‹ › 로 달을 옮겨주세요.","toast",true);return}$("day").value=ys;syncDayBtns()};
+$("day").addEventListener("change",syncDayBtns);
 $("addForm").addEventListener("submit",e=>{e.preventDefault();
   const v=parseInt(String($("amt").value).replace(/[^\d]/g,""),10);const k=+$("cat").value;const half=state.cfg.unit/2;
   if(!v||v<=0){toast("금액을 숫자로 적어주세요.","toast",true);return}
@@ -693,18 +844,20 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();
     save();endEdit();render();closeForm();toast(`${cat(k).n} ${won(v)}원으로 고쳤어요. 칸도 날짜순으로 다시 칠했어요.`);showMsg(`${cat(k).n} ${won(v)}원으로 고쳤어요.`);return}
   snap();touch();
   const d0=+day.slice(8);state.ns=state.ns.filter(x=>x!==d0);
+  const pre={h:counts(),ev:state.ev.filter(x=>x===k).length,tot:allHalves(state.cells).length};
   if($("isEv").checked||cat(k).sep){const ent={id:Date.now(),d:day,k,v,m:$("memo").value.trim()};if($("isEv").checked)ent.e=true;state.log.push(ent);$("memo").value="";
-    const n=addEvent(k,v);evOpen=true;save();render();$("amt").value="";
-    toast(`${ent.e?"이벤트비로 ":""}${cat(k).n} ${won(v)}원 → 따로 칸판에 반칸 ${n}개 칠했어요.`);return}
+    const n=addEvent(k,v);evOpen=true;save();BOOK=memoBook();render();$("amt").value="";resetFormExtras();
+    toast(`${ent.e?"이벤트비로 ":""}${cat(k).n} ${won(v)}원 → 따로 칸판에 반칸 ${n}개 칠했어요.`);if(!ent.e)budgetAlert(k,pre,true);return}
   state.log.push({id:Date.now(),d:day,k,v,m:$("memo").value.trim()});$("memo").value="";
   state.pending[k]=(state.pending[k]||0)+v;const n=Math.floor(state.pending[k]/half);
   const before=state.cells.slice(MAINn()).some(c=>c[0]>=0||c[1]>=0);
   const d=fillNext(k,n);state.pending[k]-=d*half;if(!state.pending[k])delete state.pending[k];
-  save();render();$("amt").value="";
+  save();BOOK=memoBook();render();$("amt").value="";resetFormExtras();
   const after=state.cells.slice(MAINn()).some(c=>c[0]>=0||c[1]>=0);
   if(d<n)toast("칸이 다 찼어요. 남은 금액은 잔돈으로 남겨뒀어요.","toast",true);
   else if(after&&!before)toast("예산 칸을 넘었어요. 비상금 칸이 열렸어요.","toast",true);
   else toast(d?`${cat(k).n} ${won(v)}원 → 반칸 ${d}개 칠했어요.`:`${cat(k).n} ${won(v)}원을 잔돈으로 모아뒀어요.`);
+  budgetAlert(k,pre,false);
 });
 $("undo").onclick=()=>{if(!history.length){toast("되돌릴 게 없어요.");return}state=JSON.parse(history.pop());builtFor="";save();render()};
 /* 색깔별 모아보기: 실제 칸 순서는 그대로 두고 보여줄 때만 정렬 */
@@ -897,11 +1050,16 @@ $("doImp").onclick=()=>{
   toast(`생활비 ${take.length-sc}건 ${won(sum)}원`+(sc?`, 따로 세는 돈 ${sc}건 ${won(esum)}원(이벤트비 ${ev}건 포함)`:"")+`을 가져왔어요.`+(made.length?` 새 카테고리: ${made.join(", ")}.`:"")+` (빠진 줄: 다른 달 ${other}, 수입·고정·저축 ${typ})`,"impMsg");
 };
 
-$("copyBk").onclick=()=>{const data={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PFX))data[k]=localStorage.getItem(k)}}catch(e){}
-  if(!Object.keys(data).length){toast("아직 저장된 기록이 없어요.","bkMsg",true);return}
-  const txt="한칸한칸백업:"+btoa(unescape(encodeURIComponent(JSON.stringify(data))));$("bk").value=txt;
+$("copyBk").onclick=()=>{const txt=backupText();
+  if(!txt){toast("아직 저장된 기록이 없어요.","bkMsg",true);return}
+  $("bk").value=txt;markBackup();
   const ok=()=>toast("복사했어요. 메모장이나 카톡에 붙여두세요.","bkMsg"),fail=()=>{$("bk").focus();$("bk").select();toast("자동 복사가 안 돼서 글자를 선택해뒀어요. 직접 복사해주세요.","bkMsg",true)};
   try{navigator.clipboard.writeText(txt).then(ok,fail)}catch(e){fail()}};
+$("bkNow").onclick=()=>{const txt=backupText();if(!txt)return;
+  const ok=()=>{markBackup();showMsg("백업 글자를 복사했어요. 카톡 '나와의 채팅'에 붙여넣어 두세요.")};
+  const fail=()=>{$("openSet").click();const d=document.querySelectorAll("#settings details")[1];d.open=true;$("bk").value=txt;markBackup();setTimeout(()=>{$("bk").focus();$("bk").select()},150);toast("자동 복사가 안 돼서 글자를 선택해뒀어요. 직접 복사해 카톡에 붙여두세요.","bkMsg",true)};
+  try{navigator.clipboard.writeText(txt).then(ok,fail)}catch(e){fail()}};
+$("bkLater").onclick=()=>{const d=new Date();d.setDate(d.getDate()+3);put(PFX+"bkSnooze",`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);$("bkNag").hidden=true};
 $("loadBk").onclick=()=>{try{const raw=$("bk").value.trim().replace(/^(한칸한칸|색칠가계부)백업:/,"");const data=JSON.parse(decodeURIComponent(escape(atob(raw))));
     let n=0;for(const k in data)if(k.startsWith(PFX)){localStorage.setItem(k,data[k]);n++}
     if(!n)throw 0;builtFor="";load();toast(`불러왔어요. (${n}개 항목)`,"bkMsg");$("settings").hidden=false;draft=clone(state.cfg);drawSet()}
