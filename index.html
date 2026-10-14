@@ -165,6 +165,56 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
 .cal button.future{opacity:.45}
 #cardBox{margin-top:12px}
 #cardBox img{display:block;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:8px}
+/* 반칸 모양: 세로 */
+body.half-vert .cell .h1{clip-path:polygon(0 0,50% 0,50% 100%,0 100%)}
+body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
+/* 오늘 기준선 */
+.cell.pace{overflow:visible;z-index:1;box-shadow:0 0 0 2px var(--ink)}
+.cell.pace::after{content:"";position:absolute;right:-5px;top:-5px;width:9px;height:9px;border-radius:50%;background:var(--ink);border:2px solid var(--sheet)}
+.pacetxt{font-size:.82rem;color:var(--muted)}
+.pacetxt b{font-weight:400}
+.pacetxt .fast{color:var(--over)}.pacetxt .slow{color:var(--down)}
+.sethead,.fshead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sethead h2{margin:0}
+.fshead .label{margin:0}
+.xclose{display:none}
+.fab,.tabbar,.scrim{display:none}
+/* ===== 폰 화면: 앱처럼 ===== */
+@media (max-width:820px){
+  .wrap{padding-block:12px calc(150px + env(safe-area-inset-bottom,0px))}
+  header{align-items:center;margin-bottom:10px}
+  h1{font-size:1.3rem}
+  .hright>.seg{display:none}
+  #openSet .lg{display:none}
+  .xclose{display:inline-block}
+  [data-tabs]{display:none}
+  body[data-tab="grid"] [data-tabs~="grid"],body[data-tab="log"] [data-tabs~="log"],
+  body[data-tab="cal"] [data-tabs~="cal"],body[data-tab="review"] [data-tabs~="review"]{display:block}
+  body[data-tab="log"] main.sheet{padding-top:4px}
+  body[data-tab="log"] .logbox{margin-top:0;border-top:0}
+  .side{order:0}
+  .pal{display:flex;overflow-x:auto;gap:6px;padding-bottom:4px;scrollbar-width:thin}
+  .pal .chip{flex:0 0 auto;min-width:118px}
+  /* 입력창: 아래에서 올라오는 시트 */
+  .formsheet{display:block!important;position:fixed;left:0;right:0;bottom:0;z-index:30;border-radius:16px 16px 0 0;
+    padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .22s ease;
+    box-shadow:0 -8px 24px rgba(0,0,0,.18);max-height:85vh;overflow:auto}
+  body.form-open .formsheet{transform:none}
+  .formsheet #amt{flex:1 1 100%;font-size:1.3rem;padding:10px 12px}
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:25}
+  body.form-open .scrim,body.set-open .scrim{display:block}
+  /* 설정: 전체 화면 */
+  #settings{position:fixed;inset:0;z-index:40;margin:0;border-radius:0;overflow:auto;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-bottom,0px))}
+  .fab{display:block;position:fixed;right:16px;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:20;
+    background:var(--accent);color:var(--sheet);border:0;border-radius:999px;padding:13px 20px;font-size:1rem;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+  body.form-open .fab{display:none}
+  .tabbar{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--sheet);
+    border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+  .tabbar button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.75rem;color:var(--muted);padding:4px 0}
+  .tabbar button i{font-style:normal;font-size:1.15rem;line-height:1.2}
+  .tabbar button[aria-current="page"]{color:var(--accent)}
+}
+@media (prefers-reduced-motion:reduce){.formsheet{transition:none}}
 @media (prefers-reduced-motion:no-preference){.cell span{transition:background-color .15s}}
 </style>
 
@@ -184,7 +234,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
         <b id="mlabel"></b>
         <button class="ghost" id="next" aria-label="다음 달">›</button>
       </div>
-      <button class="ghost" id="openSet">예산·카테고리 설정</button>
+      <button class="ghost" id="openSet" aria-label="예산·카테고리 설정"><span class="lg">예산·카테고리 </span>설정</button>
     </div>
   </header>
 
@@ -207,7 +257,12 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
   </section>
 
   <section class="sheet" id="settings" hidden>
-    <h2>예산·카테고리 설정</h2>
+    <div class="sethead"><h2>예산·카테고리 설정</h2><button class="ghost xclose" id="xSet" aria-label="설정 닫기">닫기</button></div>
+    <p class="label">예산 방식</p>
+    <div class="seg" role="group" aria-label="예산 방식" style="display:inline-flex;margin-bottom:14px">
+      <button id="sBudget" aria-pressed="true">카테고리 예산</button>
+      <button id="sFree" aria-pressed="false">총액만</button>
+    </div>
     <div class="fields">
       <label for="sTotal">한 달 총 예산 (만원)<input id="sTotal" type="number" min="1" step="1" inputmode="numeric"></label>
       <label for="sUnit">한 칸의 금액<select id="sUnit">
@@ -215,6 +270,10 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
         <option value="10000">1만원 (반칸 5천원)</option>
         <option value="20000">2만원 (반칸 1만원)</option>
         <option value="50000">5만원 (반칸 2만 5천원)</option>
+      </select></label>
+      <label for="sHalf">반칸 모양<select id="sHalf">
+        <option value="diag">대각선 ◩</option>
+        <option value="vert">세로로 반 ◧</option>
       </select></label>
       <label>칸 수<output id="sCells" style="font-family:var(--f-num);font-size:1.1rem;color:var(--ink);padding:6px 0"></output></label>
     </div>
@@ -232,7 +291,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
       <summary>구글 시트·엑셀 가계부에서 가져오기</summary>
       <p class="hint">가계부 시트에서 날짜·분류·내용·금액이 있는 줄들을 드래그해 복사(Ctrl+C)한 뒤 아래에 붙여넣으세요. 지금 보고 있는 달의 날짜만 가져오고, 이 달의 색칠은 가져온 내용으로 새로 채워요. 분류 이름이 내 카테고리와 같거나 비슷하면(꾸밈비→꾸밈) 그 색으로, 없으면 새 카테고리를 만들어요.</p>
       <textarea id="imp" aria-label="시트에서 복사한 내용" placeholder="2026. 10. 1	변동지출	식비	김밥	2,600"></textarea>
-      <label class="row" style="font-size:.85rem;gap:6px"><input type="checkbox" id="skipEvent" checked> '이벤트비'라고 적힌 지출은 생활비 칸 대신 이벤트비 칸판에 칠하기</label>
+      <label class="row" style="font-size:.85rem;gap:6px"><input type="checkbox" id="skipEvent" checked> '이벤트비'라고 적힌 지출은 생활비 칸 대신 따로 세는 칸판에 칠하기</label>
       <div class="row" style="margin-top:8px"><button class="ghost" id="doImp">가져오기</button></div>
       <div class="toast" id="impMsg" role="status"></div>
     </details>
@@ -247,7 +306,8 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
   </section>
 
   <div class="layout">
-    <main class="sheet">
+    <main class="sheet" data-tabs="grid log">
+      <div data-tabs="grid">
       <div class="banner" id="sample" hidden>
         <span>지금 보이는 건 예시 색칠이에요.</span>
         <button class="ghost" id="startFresh">비우고 시작하기</button>
@@ -260,7 +320,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
         <div class="rowmark"><span>예산 초과 · 비상금에서 쓴 칸</span><button class="linkbtn" id="closeOver">닫기</button></div>
         <div class="grid" id="ogrid"></div>
       </div>
-      <p class="hint">칸을 한 번 누르면 반칸, 한 번 더 누르면 한 칸이 칠해져요. 반칸 두 개를 다른 색으로 칠할 수도 있어요.</p>
+      <p class="hint">칸을 한 번 누르면 반칸, 한 번 더 누르면 한 칸이 칠해져요. 반칸 두 개를 다른 색으로 칠할 수도 있어요. <span id="paceHint"></span></p>
 
       <button class="ghost openOver" id="openEv"></button>
       <div class="evzone" id="evzone" hidden>
@@ -269,8 +329,9 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
         <div class="grid" id="egrid"></div>
         <div class="evsum" id="evSum"></div>
       </div>
+      </div>
 
-      <section class="logbox">
+      <section class="logbox" data-tabs="log">
         <div class="loghead">
           <h2>지출 내역</h2>
           <select id="logFilter" aria-label="카테고리로 거르기"></select>
@@ -280,13 +341,13 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
     </main>
 
     <aside class="side">
-      <section class="sheet">
+      <section class="sheet" data-tabs="grid">
         <p class="label">색연필 고르기</p>
         <div class="pal" id="pal"></div>
       </section>
 
-      <section class="sheet">
-        <p class="label">금액으로 칠하기</p>
+      <section class="sheet formsheet" id="formSheet" data-tabs="form">
+        <div class="fshead"><p class="label">금액으로 칠하기</p><button class="ghost xclose" id="xForm" aria-label="입력 닫기">닫기</button></div>
         <form class="row" id="addForm">
           <input id="amt" inputmode="numeric" placeholder="금액 예: 12500" aria-label="금액(원)">
           <select id="cat" aria-label="카테고리"></select>
@@ -299,13 +360,13 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
         <div class="toast" id="toast" role="status"></div>
       </section>
 
-      <section class="sheet">
+      <section class="sheet" data-tabs="cal">
         <p class="label">무지출 달력</p>
         <div class="cal" id="cal"></div>
         <p class="hint" id="calNote"></p>
       </section>
 
-      <section class="sheet">
+      <section class="sheet" data-tabs="review">
         <p class="label" id="barLabel"></p>
         <div class="bars" id="bars"></div>
         <p class="hint" id="cmpNote"></p>
@@ -318,7 +379,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
         </div>
       </section>
 
-      <section class="sheet">
+      <section class="sheet" data-tabs="grid">
         <div class="actions" id="actions">
           <button class="ghost" id="undo">되돌리기</button>
           <button class="ghost" id="sort">색깔별로 모으기</button>
@@ -333,6 +394,15 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
     </aside>
   </div>
 </div>
+
+<button class="fab" id="fab">＋ 지출 적기</button>
+<div class="scrim" id="scrim"></div>
+<nav class="tabbar" aria-label="화면 전환">
+  <button data-go="grid"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><path d="M13 13h7v7z" fill="currentColor"/></svg>칸판</button>
+  <button data-go="log"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg>내역</button>
+  <button data-go="cal"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>달력</button>
+  <button data-go="review"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V11M10 19V6M15 19v-5M20 19V9"/></svg>회고</button>
+</nav>
 
 <script>
 const PALETTE=["#f0a046","#e5718c","#ae86d6","#56b285","#4f8ad9","#cdb44d","#d65c5c","#4fb7c4","#a06e4e","#7d93ad","#9da2a9","#e98bd0"];
@@ -408,7 +478,7 @@ function load(){
   else{const now=new Date();const cur=ym[0]===now.getFullYear()&&ym[1]===now.getMonth()+1;
     state=(cur&&!hasAny()&&!get(PFX+"cfg"))?sample():emptyState(defCfg())}
   if(state.cells.length!==Nn())resize(Nn());
-  tool=state.cfg.cats[0]?state.cfg.cats[0].id:ERASER;
+  {const c0=state.cfg.cats.find(c=>!c.sep)||state.cfg.cats[0];tool=c0?c0.id:ERASER}
   history=[];overOpen=false;evOpen=false;$("settings").hidden=true;$("cardBox").hidden=true;
   const first=`${ym[0]}-${pad(ym[1])}-01`,last=`${ym[0]}-${pad(ym[1])}-${pad(daysIn())}`;
   $("day").min=first;$("day").max=last;$("day").value=isCurMonth()?todayStr():first;
@@ -430,8 +500,7 @@ function buildGrid(){
   for(let i=0;i<Nn();i++){
     const b=document.createElement("button");b.className="cell";b.dataset.i=i;
     const row=Math.floor(i/10);
-    if(i<main&&row%5===4&&(row+1)*10<main)b.classList.add("r5");
-    let num="";if(i<main&&((i+1)%10===0||i===main-1))num=`<i class="num">${man((i+1)*state.cfg.unit)}</i>`;
+    let num="";if(i<main&&((i+1)%50===0||i===main-1))num=`<i class="num">${man((i+1)*state.cfg.unit)}</i>`;
     b.innerHTML='<span class="h1"></span><span class="h2"></span>'+num;
     (i<main?g:o).appendChild(b);
   }
@@ -486,6 +555,17 @@ function render(){
   const t=$("total");t.classList.toggle("over",tot>main*2);
   t.innerHTML=`<span class="big">${fmtC(tot)}<small> / ${main}칸</small></span><span class="won">약 ${won(tot*u/2+pend)}원</span>`+
     (tot>main*2?`<span class="won ovt">${fmtC(tot-main*2)}칸 초과</span>`:`<span class="won">남은 ${fmtC(main*2-tot)}칸</span>`);
+  /* 오늘 기준선: 이 날짜까지 이만큼 썼으면 한 달 예산에 딱 맞는 위치 */
+  const now=new Date(),cm=isCurMonth(),past=new Date(ym[0],ym[1],0)<now;
+  document.querySelectorAll(".cell.pace").forEach(b=>b.classList.remove("pace"));
+  let paceTxt="";
+  if(cm){const day=now.getDate(),pace=main*day/daysIn(),pi=Math.max(0,Math.ceil(pace)-1);
+    const pc=$("grid").children[pi];if(pc&&!state.sorted)pc.classList.add("pace");
+    const diff=tot/2-pace;const rd=Math.round(Math.abs(diff)*2)/2;
+    paceTxt=`<span class="pacetxt">오늘(${day}일) 기준 ${fmtN(Math.round(pace*2)/2)}칸 · `+(rd<0.5?`<b>딱 맞는 속도</b>`:diff>0?`<b class="fast">${fmtN(rd)}칸 빠름</b>`:`<b class="slow">${fmtN(rd)}칸 여유</b>`)+`</span>`;}
+  t.insertAdjacentHTML("beforeend",paceTxt);
+  $("paceHint").textContent=cm&&!state.sorted?"까만 테두리 칸은 오늘까지 쓰면 한 달 예산에 딱 맞는 위치예요.":"";
+  document.body.classList.toggle("half-vert",cfg.half==="vert");
 
   const pal=$("pal");pal.innerHTML="";
   const sepH={};state.ev.forEach(k=>sepH[k]=(sepH[k]||0)+1);
@@ -625,11 +705,13 @@ $("prev").onclick=()=>{ym=prevYm();builtFor="";load()};
 $("next").onclick=()=>{ym=nextYm();builtFor="";load()};
 
 /* 설정 */
-$("openSet").onclick=()=>{draft=clone(state.cfg);$("settings").hidden=false;drawSet();$("settings").scrollIntoView({behavior:"smooth",block:"start"})};
-$("cancelSet").onclick=()=>{$("settings").hidden=true};
+$("openSet").onclick=()=>{draft=clone(state.cfg);$("settings").hidden=false;document.body.classList.add("set-open");drawSet();$("settings").scrollIntoView({behavior:"smooth",block:"start"})};
+$("cancelSet").onclick=()=>{$("settings").hidden=true;document.body.classList.remove("set-open")};
+$("xSet").onclick=()=>$("cancelSet").click();
 function drawSet(){
   const free=state.cfg.mode==="free";$("settings").classList.toggle("free",free);
-  $("sTotal").value=draft.total/10000;$("sUnit").value=draft.unit;
+  $("sTotal").value=draft.total/10000;$("sUnit").value=draft.unit;$("sHalf").value=draft.half||"diag";
+  $("sBudget").setAttribute("aria-pressed",!free);$("sFree").setAttribute("aria-pressed",free);
   const box=$("crows");box.innerHTML=`<div class="crow" style="font-size:.75rem;color:var(--muted)"><span>색</span><span>이름</span><span class="budhead" style="text-align:right">예산(만원)</span><span style="text-align:center">따로 세기</span><span></span></div>`;
   draft.cats.forEach((c,i)=>{const r=document.createElement("div");r.className="crow";
     r.innerHTML=`<input type="color" id="cc${c.id}" aria-label="${i+1}번째 카테고리 색"><input id="cn${c.id}" maxlength="10" aria-label="${i+1}번째 카테고리 이름"><span class="bud"><input id="cb${c.id}" type="number" min="0" step="0.5" inputmode="decimal" aria-label="${i+1}번째 카테고리 예산(만원)"></span><label class="sepchk"><input type="checkbox" id="cs${c.id}" aria-label="${i+1}번째 카테고리 따로 세기"></label><button class="del" aria-label="카테고리 삭제">×</button>`;
@@ -655,6 +737,8 @@ function sumLine(){
 }
 $("sTotal").oninput=e=>{draft.total=Math.max(1,parseFloat(e.target.value)||0)*10000;sumLine()};
 $("sUnit").onchange=e=>{draft.unit=+e.target.value;sumLine()};
+$("sHalf").onchange=e=>{draft.half=e.target.value;state.cfg.half=draft.half;const d=defCfg();d.half=draft.half;put(PFX+"cfg",d);save();render()};
+$("sBudget").onclick=()=>{setMode("budget");draft.mode="budget"};$("sFree").onclick=()=>{setMode("free");draft.mode="free"};
 $("addCat").onclick=()=>{const id=Math.max(0,...draft.cats.map(c=>c.id),...state.cfg.cats.map(c=>c.id))+1;
   draft.cats.push({id,n:"새 카테고리",b:0,c:freeColor(draft.cats)});drawSet();$("cn"+id).focus();$("cn"+id).select()};
 $("saveSet").onclick=()=>{
@@ -702,8 +786,9 @@ async function drawCard(){
   const col=k=>{const c=cat(k);return c?c.c:"#999"};const vcs=viewCells();
   for(let i=0;i<n;i++){const r=Math.floor(i/10),c=i%10;const ox=gx+c*(cs+g),oy=gy+r*(cs+g)+(i>=main?24:0);
     const cell=vcs[i];x.fillStyle=i>=main?"#fbecea":"#e7e9e3";x.fillRect(ox,oy,cs,cs);
-    if(cell[0]>=0){x.fillStyle=col(cell[0]);x.beginPath();x.moveTo(ox,oy);x.lineTo(ox,oy+cs);x.lineTo(ox+cs,oy+cs);x.fill()}
-    if(cell[1]>=0){x.fillStyle=col(cell[1]);x.beginPath();x.moveTo(ox,oy);x.lineTo(ox+cs,oy);x.lineTo(ox+cs,oy+cs);x.fill()}}
+    const vert=cfg.half==="vert";
+    if(cell[0]>=0){x.fillStyle=col(cell[0]);if(vert)x.fillRect(ox,oy,cs/2,cs);else{x.beginPath();x.moveTo(ox,oy);x.lineTo(ox,oy+cs);x.lineTo(ox+cs,oy+cs);x.fill()}}
+    if(cell[1]>=0){x.fillStyle=col(cell[1]);if(vert)x.fillRect(ox+cs/2,oy,cs/2,cs);else{x.beginPath();x.moveTo(ox,oy);x.lineTo(ox+cs,oy);x.lineTo(ox+cs,oy+cs);x.fill()}}}
   const lx=gx+gw+56;let ly=gy+8;
   x.fillStyle="#23272b";x.font=`600 54px ${M}`;x.fillText(`${fmtC(tot)}`,lx,ly+44);const tw=x.measureText(fmtC(tot)).width;
   x.fillStyle="#6b7177";x.font=`26px ${F}`;x.fillText(`/ ${main}칸 칠함`,lx+tw+12,ly+44);
@@ -798,6 +883,18 @@ function wApply(){
 $("wStart").onclick=()=>{if(wApply())toast(wMode==="free"?`한 달 ${$("wTotal").value}만원으로 시작했어요. 쓴 만큼 칸을 칠해보세요.`:"카테고리 예산을 총액에 맞춰 나눠뒀어요. 설정에서 바꿀 수 있어요.")};
 $("wCats").onclick=()=>{if(wApply()){$("openSet").click()}};
 $("wLater").onclick=()=>{put(PFX+"onboarded",1);$("welcome").hidden=true};
+
+/* 폰 화면: 아래 탭과 입력 시트 */
+function setTab(t){document.body.dataset.tab=t;
+  document.querySelectorAll(".tabbar button").forEach(x=>{if(x.dataset.go===t)x.setAttribute("aria-current","page");else x.removeAttribute("aria-current")});
+  try{localStorage.setItem(PFX+"tab",t)}catch(e){}window.scrollTo(0,0)}
+document.querySelectorAll(".tabbar button").forEach(x=>x.onclick=()=>setTab(x.dataset.go));
+const openForm=()=>{document.body.classList.add("form-open");setTimeout(()=>{try{$("amt").focus()}catch(e){}},250)};
+const closeForm=()=>document.body.classList.remove("form-open");
+$("fab").onclick=openForm;$("xForm").onclick=closeForm;
+$("scrim").onclick=()=>{closeForm();if(!$("settings").hidden)$("cancelSet").click()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeForm()}});
+setTab((()=>{try{return localStorage.getItem(PFX+"tab")||"grid"}catch(e){return "grid"}})());
 
 load();
 if(!get(PFX+"onboarded")&&!get(PFX+"cfg")&&!hasAny()){$("welcome").hidden=false;wDraw()}
