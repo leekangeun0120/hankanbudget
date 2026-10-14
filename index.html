@@ -199,8 +199,12 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
   body[data-tab="log"] main.sheet{padding-top:4px}
   body[data-tab="log"] .logbox{margin-top:0;border-top:0}
   .side{order:0}
-  .pal{display:flex;overflow-x:auto;gap:6px;padding-bottom:4px;scrollbar-width:thin}
-  .pal .chip{flex:0 0 auto;min-width:118px}
+  /* 색연필: 옆으로 넘기지 않고 한눈에 */
+  .pal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .pal .chip{grid-template-columns:14px minmax(0,1fr);grid-template-rows:auto auto;column-gap:6px;row-gap:1px;padding:6px 8px}
+  .pal .chip .sw{width:14px;height:14px;grid-row:1/3;align-self:center}
+  .pal .chip .nm{font-size:.86rem;line-height:1.25}
+  .pal .chip .ct{grid-column:2;font-size:.7rem;line-height:1.2}
   /* 입력창: 아래에서 올라오는 시트 */
   .formsheet{display:block!important;position:fixed;left:0;right:0;bottom:0;z-index:30;border-radius:16px 16px 0 0;
     padding:16px 16px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .22s ease;
