@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f6f5e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="색칠 가계부">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<title>색칠 가계부</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 모눈종이 위 색연필: 격자가 주인공, 팔레트와 회고는 옆(모바일은 위)에 조용히 */
+:root{
+  --paper:#f6f7f3; --sheet:#ffffff; --ink:#23272b; --muted:#6b7177; --line:#d9ddd6; --cell:#eef0ea;
+  --accent:#2f6f5e; --over:#c94a4a; --overbg:#fbecea; --up:#c94a4a; --down:#2f7f5e;
+  --f-body:"Gowun Dodum",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#16191b; --sheet:#1e2224; --ink:#e8ebe6; --muted:#9aa19c; --line:#353b3d; --cell:#2a2f31;
+  --accent:#6cc2a8; --over:#ef7b7b; --overbg:#3a2526; --up:#ef7b7b; --down:#6cc2a8; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#16191b; --sheet:#1e2224; --ink:#e8ebe6; --muted:#9aa19c; --line:#353b3d; --cell:#2a2f31;
+  --accent:#6cc2a8; --over:#ef7b7b; --overbg:#3a2526; --up:#ef7b7b; --down:#6cc2a8; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px;margin-bottom:16px}
+h1{font-size:1.6rem;margin:0;font-weight:400;text-wrap:balance}
+.sub{color:var(--muted);font-size:.85rem}
+.hright{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.month{display:flex;align-items:center;gap:6px}
+.month b{font-family:var(--f-num);font-weight:600;font-size:1.05rem;min-width:6.5em;text-align:center}
+button{font:inherit;color:inherit;cursor:pointer}
+.ghost{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.ghost:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;background:var(--cell);border-radius:9px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:7px;padding:5px 10px;font-size:.85rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:24px;align-items:start}
+@media (max-width:820px){.layout{grid-template-columns:minmax(0,1fr)}.side{order:-1}}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.banner{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--cell);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.9rem}
+.total{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.total .big{font-family:var(--f-num);font-size:2rem;font-weight:600;font-variant-numeric:tabular-nums}
+.total .big small{font-size:1rem;color:var(--muted);font-weight:500}
+.total .won{font-family:var(--f-num);color:var(--muted);font-variant-numeric:tabular-nums}
+.total.over .big,.total .ovt{color:var(--over)}
+.grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px}
+.cell{position:relative;aspect-ratio:1;max-width:100%;border:0;border-radius:3px;background:var(--cell);padding:0;overflow:hidden}
+.cell.r5{margin-bottom:6px}
+.cell:hover{box-shadow:inset 0 0 0 2px var(--muted)}
+.cell span{position:absolute;inset:0;background:var(--fill,transparent)}
+.cell .h1{clip-path:polygon(0 0,0 100%,100% 100%)}
+.cell .h2{clip-path:polygon(0 0,100% 0,100% 100%)}
+.cell .num{position:absolute;right:3px;bottom:1px;font-family:var(--f-num);font-size:9px;font-style:normal;color:var(--muted)}
+.rowmark{display:flex;justify-content:space-between;align-items:center;font-family:var(--f-num);font-size:.72rem;color:var(--muted);margin:10px 2px 6px}
+.openOver{margin-top:10px;font-size:.82rem;color:var(--muted);border-style:dashed}
+.linkbtn{border:0;background:none;color:var(--over);font-size:.72rem;padding:0;text-decoration:underline}
+.overzone{margin-top:6px;padding:8px;border-radius:8px;background:var(--overbg)}
+.overzone .cell{background:var(--sheet)}
+.overzone .rowmark{margin-top:0;color:var(--over)}
+.side{display:flex;flex-direction:column;gap:16px}
+.label{font-size:.78rem;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}
+.pal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.chip{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0}
+.chip .sw{width:18px;height:18px;border-radius:4px;background:var(--sw)}
+.chip .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .ct{font-family:var(--f-num);font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip.ov .ct{color:var(--over);font-weight:600}
+.chip.eraser .sw{background:repeating-linear-gradient(45deg,var(--cell) 0 4px,var(--line) 4px 8px)}
+.hint{font-size:.82rem;color:var(--muted);margin:8px 0 0}
+form.row,.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0}
+#amt{flex:1 1 110px;font-family:var(--f-num)}
+#cat{flex:1 1 110px}
+.primary{background:var(--accent);color:var(--sheet);border:0;border-radius:8px;padding:7px 14px}
+.bars{display:flex;flex-direction:column;gap:7px}
+.bar{display:grid;grid-template-columns:4.8em minmax(0,1fr) 4.6em 3.4em;gap:8px;align-items:center;font-size:.85rem}
+.bar>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .tr{position:relative;height:10px;background:var(--cell);border-radius:5px;overflow:hidden}
+.bar .fl{position:absolute;inset:0 auto 0 0;background:var(--sw);border-radius:5px}
+.bar .bd{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);opacity:.5}
+.bar .v,.bar .d{font-family:var(--f-num);font-size:.72rem;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.bar .d.up{color:var(--up)}.bar .d.down{color:var(--down)}
+.bar.ov .v{color:var(--over);font-weight:600}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.confirm{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.88rem}
+.danger{background:var(--over);color:var(--sheet);border:0;border-radius:8px;padding:6px 12px}
+.toast{min-height:1.4em;font-size:.82rem;color:var(--accent)}
+.toast.err{color:var(--over)}
+/* 설정 */
+#settings{margin-bottom:16px}
+#settings h2{font-size:1.1rem;font-weight:400;margin:0 0 12px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.fields label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted)}
+.fields input,.fields select{font-family:var(--f-num)}
+.crow{display:grid;grid-template-columns:36px minmax(0,1fr) 92px 32px;gap:6px;align-items:center;margin-bottom:6px}
+.crow input[type=color]{width:36px;height:34px;padding:2px;border-radius:8px}
+.crow .bud{display:flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted)}
+.crow .bud input{width:100%;font-family:var(--f-num);text-align:right}
+.crow .del{border:1px solid var(--line);background:var(--sheet);border-radius:8px;height:34px;color:var(--muted)}
+.sum{font-family:var(--f-num);font-size:.82rem;margin:8px 0 12px;color:var(--muted)}
+.sum.bad{color:var(--over)}
+.free .bud,.free .budhead{display:none!important}
+.free .crow{grid-template-columns:36px minmax(0,1fr) 32px}
+details{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-size:.88rem;color:var(--muted)}
+textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;margin:8px 0}
+#memo{flex:2 1 150px}#day{flex:1 1 130px;font-family:var(--f-num)}
+/* 지출 내역 */
+.logbox{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+.loghead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.loghead h2{font-size:1.05rem;font-weight:400;margin:0}
+.lday{font-family:var(--f-num);font-size:.75rem;color:var(--muted);margin:12px 0 4px;display:flex;justify-content:space-between}
+.lrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto 28px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.lrow .dot{width:10px;height:10px;border-radius:3px;background:var(--sw)}
+.lrow .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .t small{color:var(--muted);margin-left:6px}
+.lrow .a{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:.9rem}
+.lrow button{border:0;background:none;color:var(--muted);font-size:1.1rem;padding:0;height:28px}
+.lrow button:hover{color:var(--over)}
+.empty{color:var(--muted);font-size:.88rem;padding:10px 0}
+/* 무지출 달력 */
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.cal .wd{font-size:.7rem;color:var(--muted);text-align:center;padding-bottom:2px}
+.cal button{position:relative;aspect-ratio:1;max-width:100%;border:1px solid transparent;border-radius:6px;background:var(--cell);font-family:var(--f-num);font-size:.75rem;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--ink)}
+.cal button small{font-size:.58rem;color:var(--muted);line-height:1}
+.cal button.spent{background:var(--sheet);border-color:var(--line)}
+.cal button.ns{background:var(--down);color:var(--sheet)}
+.cal button.ns small{color:var(--sheet)}
+.cal button.today{box-shadow:inset 0 0 0 2px var(--ink)}
+.cal button.future{opacity:.45}
+#cardBox{margin-top:12px}
+#cardBox img{display:block;width:100%;border-radius:8px;border:1px solid var(--line);margin-bottom:8px}
+@media (prefers-reduced-motion:no-preference){.cell span{transition:background-color .15s}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>색칠 가계부</h1>
+      <div class="sub" id="sub"></div>
+    </div>
+    <div class="hright">
+      <div class="seg" role="group" aria-label="예산 방식">
+        <button id="mBudget" aria-pressed="true">카테고리 예산</button>
+        <button id="mFree" aria-pressed="false">총액만</button>
+      </div>
+      <div class="month">
+        <button class="ghost" id="prev" aria-label="이전 달">‹</button>
+        <b id="mlabel"></b>
+        <button class="ghost" id="next" aria-label="다음 달">›</button>
+      </div>
+      <button class="ghost" id="openSet">예산·카테고리 설정</button>
+    </div>
+  </header>
+
+  <section class="sheet" id="settings" hidden>
+    <h2>예산·카테고리 설정</h2>
+    <div class="fields">
+      <label for="sTotal">한 달 총 예산 (만원)<input id="sTotal" type="number" min="1" step="1" inputmode="numeric"></label>
+      <label for="sUnit">한 칸의 금액<select id="sUnit">
+        <option value="5000">5천원 (반칸 2,500원)</option>
+        <option value="10000">1만원 (반칸 5천원)</option>
+        <option value="20000">2만원 (반칸 1만원)</option>
+        <option value="50000">5만원 (반칸 2만 5천원)</option>
+      </select></label>
+      <label>칸 수<output id="sCells" style="font-family:var(--f-num);font-size:1.1rem;color:var(--ink);padding:6px 0"></output></label>
+    </div>
+    <div id="crows"></div>
+    <div class="row"><button class="ghost" id="addCat">+ 카테고리 추가</button></div>
+    <div class="sum" id="sSum"></div>
+    <div class="row">
+      <button class="primary" id="saveSet">저장</button>
+      <button class="ghost" id="cancelSet">닫기</button>
+    </div>
+    <div class="toast" id="setMsg" role="status"></div>
+    <p class="hint">저장하면 이번 달과 앞으로 새로 여는 달에 적용돼요. 지난 달 기록은 그때 설정 그대로 남아요.</p>
+    <details id="impBox">
+      <summary>구글 시트·엑셀 가계부에서 가져오기</summary>
+      <p class="hint">가계부 시트에서 날짜·분류·내용·금액이 있는 줄들을 드래그해 복사(Ctrl+C)한 뒤 아래에 붙여넣으세요. 지금 보고 있는 달의 날짜만 가져오고, 이 달의 색칠은 가져온 내용으로 새로 채워요. 분류 이름이 내 카테고리와 같거나 비슷하면(꾸밈비→꾸밈) 그 색으로, 없으면 새 카테고리를 만들어요.</p>
+      <textarea id="imp" aria-label="시트에서 복사한 내용" placeholder="2026. 10. 1	변동지출	식비	김밥	2,600"></textarea>
+      <label class="row" style="font-size:.85rem;gap:6px"><input type="checkbox" id="skipEvent" checked> '이벤트비'라고 적힌 지출은 빼기 (생활비가 아니라 이벤트비 통장에서 나간 돈)</label>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="doImp">가져오기</button></div>
+      <div class="toast" id="impMsg" role="status"></div>
+    </details>
+    <details>
+      <summary>백업하고 다른 기기로 옮기기</summary>
+      <p class="hint">기록은 지금 쓰는 브라우저에만 저장돼요. 백업 글자를 복사해 메모장이나 카톡 나와의 채팅에 붙여두면, 다른 기기에서 붙여넣어 그대로 불러올 수 있어요.</p>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="copyBk">백업 글자 복사</button></div>
+      <textarea id="bk" aria-label="백업 글자" placeholder="여기에 백업 글자를 붙여넣고 '불러오기'를 누르세요"></textarea>
+      <div class="row"><button class="ghost" id="loadBk">불러오기</button></div>
+      <div class="toast" id="bkMsg" role="status"></div>
+    </details>
+  </section>
+
+  <div class="layout">
+    <main class="sheet">
+      <div class="banner" id="sample" hidden>
+        <span>지금 보이는 건 예시 색칠이에요.</span>
+        <button class="ghost" id="startFresh">비우고 시작하기</button>
+      </div>
+      <div class="total" id="total"></div>
+      <div class="rowmark"><span>0</span><span id="rowUnit"></span></div>
+      <div class="grid" id="grid"></div>
+      <button class="ghost openOver" id="openOver">비상금 칸 열기</button>
+      <div class="overzone" id="overzone" hidden>
+        <div class="rowmark"><span>예산 초과 · 비상금에서 쓴 칸</span><button class="linkbtn" id="closeOver">닫기</button></div>
+        <div class="grid" id="ogrid"></div>
+      </div>
+      <p class="hint">칸을 한 번 누르면 반칸, 한 번 더 누르면 한 칸이 칠해져요. 반칸 두 개를 다른 색으로 칠할 수도 있어요.</p>
+
+      <section class="logbox">
+        <div class="loghead">
+          <h2>지출 내역</h2>
+          <select id="logFilter" aria-label="카테고리로 거르기"></select>
+        </div>
+        <div id="log"></div>
+      </section>
+    </main>
+
+    <aside class="side">
+      <section class="sheet">
+        <p class="label">색연필 고르기</p>
+        <div class="pal" id="pal"></div>
+      </section>
+
+      <section class="sheet">
+        <p class="label">금액으로 칠하기</p>
+        <form class="row" id="addForm">
+          <input id="amt" inputmode="numeric" placeholder="금액 예: 12500" aria-label="금액(원)">
+          <select id="cat" aria-label="카테고리"></select>
+          <input id="memo" maxlength="30" placeholder="메모 (예: 올리브영)" aria-label="메모">
+          <input id="day" type="date" aria-label="날짜">
+          <button class="primary" type="submit">칠하기</button>
+        </form>
+        <p class="hint" id="pending"></p>
+        <div class="toast" id="toast" role="status"></div>
+      </section>
+
+      <section class="sheet">
+        <p class="label">무지출 달력</p>
+        <div class="cal" id="cal"></div>
+        <p class="hint" id="calNote"></p>
+      </section>
+
+      <section class="sheet">
+        <p class="label" id="barLabel"></p>
+        <div class="bars" id="bars"></div>
+        <p class="hint" id="cmpNote"></p>
+        <div class="row" style="margin-top:12px"><button class="ghost" id="makeCard">회고 카드 이미지 만들기</button></div>
+        <div id="cardBox" hidden>
+          <img id="cardImg" alt="이번 달 색칠 가계부 회고 카드">
+          <div class="row"><button class="ghost" id="copyCard">이미지 복사</button><button class="ghost" id="closeCard">닫기</button></div>
+          <p class="hint">폰에서는 이미지를 길게 눌러 사진첩에 저장하세요.</p>
+          <div class="toast" id="cardMsg" role="status"></div>
+        </div>
+      </section>
+
+      <section class="sheet">
+        <div class="actions" id="actions">
+          <button class="ghost" id="undo">되돌리기</button>
+          <button class="ghost" id="sort">색깔별로 모으기</button>
+          <button class="ghost" id="clear">이번 달 비우기</button>
+        </div>
+        <div class="confirm" id="confirm" hidden>
+          <span>이번 달 색칠을 모두 지울까요?</span>
+          <button class="danger" id="yes">지우기</button>
+          <button class="ghost" id="no">취소</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+const PALETTE=["#f0a046","#e5718c","#ae86d6","#56b285","#4f8ad9","#cdb44d","#d65c5c","#4fb7c4","#a06e4e","#7d93ad","#9da2a9","#e98bd0"];
+const DEF={total:1500000,unit:10000,mode:"budget",cats:[
+  ["식비",30],["카페·간식",10],["생활용품",15],["교통",10],["꾸밈",20],["건강",10],["문화·여가",15],["자기계발",15],["경조사·선물",15],["기타",10]
+].map(([n,m],i)=>({id:i+1,n,b:m*10000,c:PALETTE[i]}))};
+const OVER=30, ERASER=-2, PFX="color-budget:";
+const $=id=>document.getElementById(id);
+const get=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}};
+const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const won=n=>Math.round(n).toLocaleString("ko-KR");
+const man=n=>{const v=n/10000;return (Number.isInteger(v)?v:v.toFixed(1))+"만"};
+const fmtC=h=>(h%2?(h/2).toFixed(1):String(h/2));
+const fmtN=x=>Number.isInteger(x)?String(x):x.toFixed(1);
+
+let ym=(()=>{const d=new Date();return [d.getFullYear(),d.getMonth()+1]})();
+let state, history=[], tool=null, overOpen=false, draft=null;
+const mkey=(y,m)=>`${PFX}${y}-${String(m).padStart(2,"0")}`;
+const key=()=>mkey(ym[0],ym[1]);
+const prevYm=()=>ym[1]===1?[ym[0]-1,12]:[ym[0],ym[1]-1];
+const nextYm=()=>ym[1]===12?[ym[0]+1,1]:[ym[0],ym[1]+1];
+const defCfg=()=>get(PFX+"cfg")||clone(DEF);
+const MAINn=()=>Math.ceil(state.cfg.total/state.cfg.unit);
+const Nn=()=>MAINn()+OVER;
+const cat=id=>state.cfg.cats.find(c=>c.id===id);
+
+function emptyState(cfg){const main=Math.ceil(cfg.total/cfg.unit);return {cfg,cells:Array.from({length:main+OVER},()=>[-1,-1]),pending:{},sample:false,log:[],ns:[]}}
+const pad=n=>String(n).padStart(2,"0");
+const daysIn=()=>new Date(ym[0],ym[1],0).getDate();
+const todayStr=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const isCurMonth=()=>{const d=new Date();return ym[0]===d.getFullYear()&&ym[1]===d.getMonth()+1};
+function hasAny(){try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^color-budget:\d{4}-\d{2}$/.test(k))return true}}catch(e){}return false}
+function sample(){
+  const s=emptyState(clone(DEF));s.sample=true;
+  const counts=[44,22,18,14,30,8,20,12,10,6];let seed=11;
+  const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const halves=[];counts.forEach((c,i)=>{for(let j=0;j<c;j++)halves.push(i+1)});
+  for(let i=halves.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[halves[i],halves[j]]=[halves[j],halves[i]]}
+  halves.forEach((k,i)=>{s.cells[i>>1][i&1]=k});s.pending={1:3200};
+  const d=new Date(),y=d.getFullYear(),m=pad(d.getMonth()+1),t=d.getDate();
+  const ex=[[1,1,32000,"장보기"],[2,2,6500,"아메리카노"],[2,5,45000,"올리브영"],[4,4,12000,"교통카드 충전"],[5,7,38000,"영화+팝콘"],[6,1,18000,"점심 약속"],[6,8,24000,"책 2권"]];
+  s.log=ex.filter(e=>e[0]<=t).map((e,i)=>({id:i+1,d:`${y}-${m}-${pad(e[0])}`,k:e[1],v:e[2],m:e[3]}));
+  s.ns=[3].filter(x=>x<=t);return s;
+}
+function load(){
+  const s=get(key());
+  if(s&&s.cfg&&Array.isArray(s.cells)){state=s;state.pending=state.pending||{};state.log=state.log||[];state.ns=state.ns||[]}
+  else{const now=new Date();const cur=ym[0]===now.getFullYear()&&ym[1]===now.getMonth()+1;
+    state=(cur&&!hasAny()&&!get(PFX+"cfg"))?sample():emptyState(defCfg())}
+  if(state.cells.length!==Nn())resize(Nn());
+  tool=state.cfg.cats[0]?state.cfg.cats[0].id:ERASER;
+  history=[];overOpen=false;$("settings").hidden=true;$("cardBox").hidden=true;
+  const first=`${ym[0]}-${pad(ym[1])}-01`,last=`${ym[0]}-${pad(ym[1])}-${pad(daysIn())}`;
+  $("day").min=first;$("day").max=last;$("day").value=isCurMonth()?todayStr():first;
+  render();
+}
+function save(){if(!state.sample)put(key(),state)}
+function snap(){history.push(JSON.stringify(state));if(history.length>60)history.shift()}
+function allHalves(cells){const l=[];cells.forEach(c=>c.forEach(k=>{if(k>=0)l.push(k)}));return l}
+function resize(n){const l=allHalves(state.cells);state.cells=Array.from({length:n},()=>[-1,-1]);l.slice(0,n*2).forEach((k,i)=>{state.cells[i>>1][i&1]=k})}
+function counts(){const h={};state.cfg.cats.forEach(c=>h[c.id]=0);allHalves(state.cells).forEach(k=>{h[k]=(h[k]||0)+1});return h}
+/* 예시 화면에서 처음 기록하면 예시를 비우고 진짜 기록으로 시작 */
+function touch(){if(state.sample){Object.assign(state,emptyState(state.cfg));setTimeout(()=>toast("예시를 비우고 내 기록으로 시작했어요."),50)}}
+
+/* 격자 */
+let builtFor="";
+function buildGrid(){
+  const sig=Nn()+"";if(sig===builtFor)return;builtFor=sig;
+  const main=MAINn();const g=$("grid"),o=$("ogrid");g.innerHTML="";o.innerHTML="";
+  for(let i=0;i<Nn();i++){
+    const b=document.createElement("button");b.className="cell";b.dataset.i=i;
+    const row=Math.floor(i/10);
+    if(i<main&&row%5===4&&(row+1)*10<main)b.classList.add("r5");
+    let num="";if(i<main&&((i+1)%10===0||i===main-1))num=`<i class="num">${man((i+1)*state.cfg.unit)}</i>`;
+    b.innerHTML='<span class="h1"></span><span class="h2"></span>'+num;
+    (i<main?g:o).appendChild(b);
+  }
+}
+document.addEventListener("click",e=>{const b=e.target.closest(".cell");if(b)paint(+b.dataset.i)});
+function paint(i){
+  let c=state.cells[i];
+  if(state.sample){if(tool===ERASER)return;snap();touch();c=state.cells[i];c[0]=tool}
+  else if(tool===ERASER){if(c[0]<0&&c[1]<0)return;snap();if(c[1]>=0)c[1]=-1;else c[0]=-1}
+  else{if(!cat(tool))return;if(c[0]>=0&&c[1]>=0){toast("이미 다 칠한 칸이에요. 지우개로 지울 수 있어요.");return}snap();if(c[0]<0)c[0]=tool;else c[1]=tool}
+  save();render();
+}
+/* 어떤 카테고리에서 금액을 빼면, 그 색의 마지막 반칸부터 지움 */
+function removeAmount(k,v){
+  const half=state.cfg.unit/2;let cnt=0;state.cells.forEach(c=>c.forEach(x=>{if(x===k)cnt++}));
+  const w=Math.max(0,cnt*half+(state.pending[k]||0)-v);const target=Math.floor(w/half);let rm=cnt-target;
+  for(let i=state.cells.length-1;i>=0&&rm>0;i--){const c=state.cells[i];
+    if(c[1]===k){c[1]=-1;rm--}if(rm>0&&c[0]===k){c[0]=c[1];c[1]=-1;rm--}}
+  const p=w-target*half;if(p)state.pending[k]=p;else delete state.pending[k];
+}
+function fillNext(k,n){let d=0;for(let i=0;i<state.cells.length&&d<n;i++){const c=state.cells[i];if(c[0]<0){c[0]=k;d++;i--;continue}if(c[1]<0){c[1]=k;d++}}return d}
+
+/* 지난달 비교: 이름이 같은 카테고리끼리 금액으로 비교 */
+function prevSpend(){
+  const [py,pm]=prevYm();const ps=get(mkey(py,pm));if(!ps||!ps.cfg)return null;
+  const byName={};const h={};allHalves(ps.cells).forEach(k=>h[k]=(h[k]||0)+1);
+  ps.cfg.cats.forEach(c=>{byName[c.n]=(h[c.id]||0)*ps.cfg.unit/2+((ps.pending||{})[c.id]||0)});
+  return byName;
+}
+
+function render(){
+  const cfg=state.cfg,B=cfg.mode!=="free",main=MAINn(),u=cfg.unit;
+  buildGrid();
+  $("mlabel").textContent=`${ym[0]}년 ${ym[1]}월`;
+  $("sub").textContent=`한 달 ${man(cfg.total)}원 · 1칸 = ${won(u)}원 · 반칸 = ${won(u/2)}원`;
+  $("rowUnit").textContent=`한 줄 = ${man(u*10)}원`;
+  $("sample").hidden=!state.sample;
+  $("mBudget").setAttribute("aria-pressed",B);$("mFree").setAttribute("aria-pressed",!B);
+  const col=k=>{const c=cat(k);return k>=0?(c?c.c:"#999"):"transparent"};
+  document.querySelectorAll(".cell").forEach(b=>{const c=state.cells[b.dataset.i];if(!c)return;
+    b.children[0].style.setProperty("--fill",col(c[0]));b.children[1].style.setProperty("--fill",col(c[1]));
+    b.setAttribute("aria-label",`${+b.dataset.i+1}번 칸: `+c.map(k=>k>=0?(cat(k)?cat(k).n:"삭제됨"):"빈 반칸").join(", "))});
+  const overUsed=state.cells.slice(main).some(c=>c[0]>=0||c[1]>=0);if(overUsed)overOpen=true;
+  $("overzone").hidden=!overOpen;$("openOver").hidden=overOpen;$("closeOver").hidden=overUsed;
+
+  const h=counts(),tot=allHalves(state.cells).length,pend=Object.values(state.pending).reduce((a,b)=>a+b,0);
+  const t=$("total");t.classList.toggle("over",tot>main*2);
+  t.innerHTML=`<span class="big">${fmtC(tot)}<small> / ${main}칸</small></span><span class="won">약 ${won(tot*u/2+pend)}원</span>`+
+    (tot>main*2?`<span class="won ovt">${fmtC(tot-main*2)}칸 초과</span>`:`<span class="won">남은 ${fmtC(main*2-tot)}칸</span>`);
+
+  const pal=$("pal");pal.innerHTML="";
+  cfg.cats.forEach(c=>{const bc=c.b/u;const ov=B&&h[c.id]>bc*2;
+    pal.insertAdjacentHTML("beforeend",`<button class="chip${c.id===tool?" on":""}${ov?" ov":""}" data-k="${c.id}" style="--sw:${c.c}"><span class="sw"></span><span class="nm"></span><span class="ct">${B?`${fmtC(h[c.id])}/${fmtN(bc)}`:`${fmtC(h[c.id])}칸`}</span></button>`);
+    pal.lastElementChild.querySelector(".nm").textContent=c.n});
+  pal.insertAdjacentHTML("beforeend",`<button class="chip eraser${tool===ERASER?" on":""}" data-k="${ERASER}"><span class="sw"></span><span class="nm">지우개</span><span class="ct"></span></button>`);
+  const sel=$("cat");const sv=sel.value;sel.innerHTML="";cfg.cats.forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.n;sel.appendChild(o)});
+  if(tool>=0)sel.value=tool;else if(sv&&cat(+sv))sel.value=sv;
+
+  const prev=prevSpend();
+  $("barLabel").textContent=B?"카테고리별 회고 (칠한 칸 / 예산 칸)":"카테고리별 회고 (칠한 칸 · 비율)";
+  const rows=B?cfg.cats.slice():cfg.cats.slice().sort((a,b)=>h[b.id]-h[a.id]);
+  const max=Math.max(1,...cfg.cats.map(c=>Math.max(h[c.id],B?c.b/u*2:0)));
+  $("bars").innerHTML=rows.map(c=>{const bh=c.b/u*2,ov=B&&h[c.id]>bh;
+    let d="",dc="";if(prev&&c.n in prev){const diff=h[c.id]*u/2+(state.pending[c.id]||0)-prev[c.n];if(Math.abs(diff)>=u/2){d=(diff>0?"+":"−")+man(Math.abs(diff));dc=diff>0?"up":"down"}else d="="}
+    return `<div class="bar${ov?" ov":""}" style="--sw:${c.c}"><span></span><div class="tr"><div class="fl" style="width:${h[c.id]/max*100}%"></div>${B?`<div class="bd" style="left:calc(${bh/max*100}% - 1px)"></div>`:""}</div><span class="v">${B?`${fmtC(h[c.id])} / ${fmtN(bh/2)}`:`${fmtC(h[c.id])} · ${tot?Math.round(h[c.id]/tot*100):0}%`}</span><span class="d ${dc}">${d}</span></div>`}).join("");
+  [...$("bars").children].forEach((el,i)=>el.firstElementChild.textContent=rows[i].n);
+  $("cmpNote").textContent=prev?"오른쪽 끝 숫자는 지난달보다 늘거나 준 금액이에요.":"지난달 기록이 있으면 카테고리별로 얼마나 늘었는지도 보여줘요.";
+
+  const p=cfg.cats.filter(c=>state.pending[c.id]).map(c=>`${c.n} ${won(state.pending[c.id])}원`);
+  renderLog();renderCal();
+  $("pending").textContent=p.length?`모아둔 잔돈: ${p.join(" · ")}`:`${won(u/2)}원이 안 되는 돈은 모아뒀다가 다 차면 반칸을 칠해요.`;
+}
+function renderLog(){
+  const f=$("logFilter"),fv=f.value||"all";
+  f.innerHTML=`<option value="all">전체</option>`+state.cfg.cats.map(c=>`<option value="${c.id}"></option>`).join("");
+  [...f.options].slice(1).forEach((o,i)=>o.textContent=state.cfg.cats[i].n);
+  f.value=[...f.options].some(o=>o.value===fv)?fv:"all";
+  const list=state.log.filter(e=>f.value==="all"||e.k===+f.value).slice().sort((a,b)=>b.d.localeCompare(a.d)||b.id-a.id);
+  const box=$("log");box.innerHTML="";
+  if(!list.length){box.innerHTML=`<p class="empty">${state.log.length?"이 카테고리로 적은 내역이 없어요.":"'금액으로 칠하기'에 메모와 함께 적으면 여기에 날짜별로 쌓여요. 칸을 손으로 칠한 건 내역에 남지 않아요."}</p>`;return}
+  const wk=["일","월","화","수","목","금","토"];let cur="",sum=0,head=null;
+  list.forEach(e=>{
+    if(e.d!==cur){cur=e.d;sum=0;const dt=new Date(e.d+"T00:00");head=document.createElement("div");head.className="lday";head.innerHTML=`<span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${wk[dt.getDay()]})</span><span></span>`;box.appendChild(head)}
+    sum+=e.v;head.lastElementChild.textContent=won(sum)+"원";
+    const c=cat(e.k);const r=document.createElement("div");r.className="lrow";r.style.setProperty("--sw",c?c.c:"#999");
+    r.innerHTML=`<span class="dot"></span><span class="t"><span></span><small></small></span><span class="a">${won(e.v)}</span><button aria-label="이 내역 지우기">×</button>`;
+    r.querySelector(".t span").textContent=e.m||(c?c.n:"삭제된 카테고리");r.querySelector(".t small").textContent=e.m&&c?c.n:"";
+    r.querySelector("button").onclick=()=>{snap();state.log=state.log.filter(x=>x.id!==e.id);if(cat(e.k))removeAmount(e.k,e.v);save();render();toast(`${won(e.v)}원 내역을 지우고 칸도 지웠어요. 되돌리기로 살릴 수 있어요.`)};
+    box.appendChild(r)});
+}
+function renderCal(){
+  const box=$("cal");box.innerHTML=["일","월","화","수","목","금","토"].map(w=>`<span class="wd">${w}</span>`).join("");
+  const first=new Date(ym[0],ym[1]-1,1).getDay();for(let i=0;i<first;i++)box.insertAdjacentHTML("beforeend","<span></span>");
+  const byDay={};state.log.forEach(e=>{const d=+e.d.slice(8);byDay[d]=(byDay[d]||0)+e.v});
+  const now=new Date(),cm=isCurMonth(),past=new Date(ym[0],ym[1],0)<now;
+  for(let d=1;d<=daysIn();d++){const b=document.createElement("button");const ns=state.ns.includes(d);
+    b.className=(byDay[d]?"spent":"")+(ns?" ns":"")+(cm&&d===now.getDate()?" today":"")+((cm&&d>now.getDate())||(!cm&&!past)?" future":"");
+    b.innerHTML=`${d}<small>${ns?"무지출":byDay[d]?man(byDay[d]):""}</small>`;
+    b.setAttribute("aria-label",`${ym[1]}월 ${d}일`+(ns?" 무지출":byDay[d]?` ${won(byDay[d])}원 지출`:""));
+    b.onclick=()=>{if(byDay[d]&&!ns){toast(`${d}일은 쓴 내역이 있어서 무지출로 표시할 수 없어요.`,"toast",true);return}
+      snap();touch();state.ns=ns?state.ns.filter(x=>x!==d):[...state.ns,d];save();render()};
+    box.appendChild(b)}
+  const n=state.ns.length;$("calNote").textContent=n?`이번 달 무지출 ${n}일. 돈을 안 쓴 날을 눌러 표시해요.`:"돈을 한 푼도 안 쓴 날을 눌러 표시해요. 내역을 적은 날은 쓴 금액이 보여요.";
+}
+let tt;function toast(m,el="toast",err=false){const e=$(el);e.textContent=m;e.classList.toggle("err",err);clearTimeout(e._t);e._t=setTimeout(()=>e.textContent="",4000)}
+
+$("pal").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;tool=+b.dataset.k;if(tool>=0)$("cat").value=tool;render()});
+$("addForm").addEventListener("submit",e=>{e.preventDefault();
+  const v=parseInt(String($("amt").value).replace(/[^\d]/g,""),10);const k=+$("cat").value;const half=state.cfg.unit/2;
+  if(!v||v<=0){toast("금액을 숫자로 적어주세요.","toast",true);return}
+  const day=$("day").value||($("day").min);
+  if(!day.startsWith(`${ym[0]}-${pad(ym[1])}`)){toast("이 달에 속한 날짜를 골라주세요. 다른 달은 위의 ‹ › 로 옮겨서 적어요.","toast",true);return}
+  snap();touch();
+  const d0=+day.slice(8);state.ns=state.ns.filter(x=>x!==d0);
+  state.log.push({id:Date.now(),d:day,k,v,m:$("memo").value.trim()});$("memo").value="";
+  state.pending[k]=(state.pending[k]||0)+v;const n=Math.floor(state.pending[k]/half);
+  const before=state.cells.slice(MAINn()).some(c=>c[0]>=0||c[1]>=0);
+  const d=fillNext(k,n);state.pending[k]-=d*half;if(!state.pending[k])delete state.pending[k];
+  save();render();$("amt").value="";
+  const after=state.cells.slice(MAINn()).some(c=>c[0]>=0||c[1]>=0);
+  if(d<n)toast("칸이 다 찼어요. 남은 금액은 잔돈으로 남겨뒀어요.","toast",true);
+  else if(after&&!before)toast("예산 칸을 넘었어요. 비상금 칸이 열렸어요.","toast",true);
+  else toast(d?`${cat(k).n} ${won(v)}원 → 반칸 ${d}개 칠했어요.`:`${cat(k).n} ${won(v)}원을 잔돈으로 모아뒀어요.`);
+});
+$("undo").onclick=()=>{if(!history.length){toast("되돌릴 게 없어요.");return}state=JSON.parse(history.pop());builtFor="";save();render()};
+$("sort").onclick=()=>{snap();touch();const h=counts();const l=[];state.cfg.cats.forEach(c=>{for(let i=0;i<h[c.id];i++)l.push(c.id)});
+  allHalves(state.cells).filter(k=>!cat(k)).forEach(k=>l.push(k));
+  state.cells=state.cells.map(()=>[-1,-1]);l.forEach((k,i)=>{state.cells[i>>1][i&1]=k});save();render();toast("같은 색끼리 모았어요. 되돌리기로 원래 순서로 돌아갈 수 있어요.")};
+$("clear").onclick=()=>{$("actions").hidden=true;$("confirm").hidden=false};
+$("no").onclick=()=>{$("actions").hidden=false;$("confirm").hidden=true};
+$("yes").onclick=()=>{snap();state=emptyState(clone(state.sample?defCfg():state.cfg));builtFor="";save();render();$("no").onclick()};
+$("startFresh").onclick=()=>{snap();state=emptyState(defCfg());builtFor="";save();render()};
+$("openOver").onclick=()=>{overOpen=true;render()};
+$("closeOver").onclick=()=>{overOpen=false;render()};
+function setMode(m){state.cfg.mode=m;const d=defCfg();d.mode=m;put(PFX+"cfg",d);save();render();if(!$("settings").hidden)drawSet()}
+$("mBudget").onclick=()=>setMode("budget");$("mFree").onclick=()=>setMode("free");
+$("prev").onclick=()=>{ym=prevYm();builtFor="";load()};
+$("next").onclick=()=>{ym=nextYm();builtFor="";load()};
+
+/* 설정 */
+$("openSet").onclick=()=>{draft=clone(state.cfg);$("settings").hidden=false;drawSet();$("settings").scrollIntoView({behavior:"smooth",block:"start"})};
+$("cancelSet").onclick=()=>{$("settings").hidden=true};
+function drawSet(){
+  const free=state.cfg.mode==="free";$("settings").classList.toggle("free",free);
+  $("sTotal").value=draft.total/10000;$("sUnit").value=draft.unit;
+  const box=$("crows");box.innerHTML=`<div class="crow" style="font-size:.75rem;color:var(--muted)"><span>색</span><span>이름</span><span class="budhead" style="text-align:right">예산(만원)</span><span></span></div>`;
+  draft.cats.forEach((c,i)=>{const r=document.createElement("div");r.className="crow";
+    r.innerHTML=`<input type="color" id="cc${c.id}" aria-label="${i+1}번째 카테고리 색"><input id="cn${c.id}" maxlength="10" aria-label="${i+1}번째 카테고리 이름"><span class="bud"><input id="cb${c.id}" type="number" min="0" step="0.5" inputmode="decimal" aria-label="${i+1}번째 카테고리 예산(만원)"></span><button class="del" aria-label="카테고리 삭제">×</button>`;
+    r.querySelector("[type=color]").value=c.c;r.querySelector(`#cn${c.id}`).value=c.n;r.querySelector(`#cb${c.id}`).value=c.b/10000;
+    r.querySelector("[type=color]").oninput=e=>{c.c=e.target.value};
+    r.querySelector(`#cn${c.id}`).oninput=e=>{c.n=e.target.value};
+    r.querySelector(`#cb${c.id}`).oninput=e=>{c.b=Math.max(0,parseFloat(e.target.value)||0)*10000;sumLine()};
+    r.querySelector(".del").onclick=()=>{
+      if(allHalves(state.cells).includes(c.id)||state.pending[c.id]||state.log.some(e=>e.k===c.id)){toast(`'${c.n}'은 이번 달에 칠한 칸이 있어서 지울 수 없어요. 지우개로 먼저 지워주세요.`,"setMsg",true);return}
+      if(draft.cats.length<=1){toast("카테고리는 하나 이상 있어야 해요.","setMsg",true);return}
+      draft.cats=draft.cats.filter(x=>x!==c);drawSet()};
+    box.appendChild(r)});
+  sumLine();
+}
+function sumLine(){
+  const cells=Math.ceil(draft.total/draft.unit);$("sCells").textContent=`${cells}칸 (${Math.ceil(cells/10)}줄)`;
+  const s=draft.cats.reduce((a,c)=>a+c.b,0),left=draft.total-s,el=$("sSum");
+  if(state.cfg.mode==="free"){el.textContent=`총액모드에서는 카테고리별 예산 없이 ${man(draft.total)}원만 지키면 돼요.`;el.classList.remove("bad");return}
+  el.textContent=`카테고리 합계 ${man(s)}원 / 총 ${man(draft.total)}원 · `+(left>=0?`${man(left)}원 남음`:`${man(-left)}원 넘침`);
+  el.classList.toggle("bad",left<0);
+}
+$("sTotal").oninput=e=>{draft.total=Math.max(1,parseFloat(e.target.value)||0)*10000;sumLine()};
+$("sUnit").onchange=e=>{draft.unit=+e.target.value;sumLine()};
+$("addCat").onclick=()=>{const id=Math.max(0,...draft.cats.map(c=>c.id),...state.cfg.cats.map(c=>c.id))+1;
+  draft.cats.push({id,n:"새 카테고리",b:0,c:PALETTE[draft.cats.length%PALETTE.length]});drawSet();$("cn"+id).focus();$("cn"+id).select()};
+$("saveSet").onclick=()=>{
+  draft.cats.forEach(c=>c.n=c.n.trim());
+  if(draft.cats.some(c=>!c.n)){toast("이름이 빈 카테고리가 있어요.","setMsg",true);return}
+  if(new Set(draft.cats.map(c=>c.n)).size!==draft.cats.length){toast("같은 이름의 카테고리가 있어요.","setMsg",true);return}
+  if(draft.total<draft.unit){toast("총 예산이 한 칸 금액보다 커야 해요.","setMsg",true);return}
+  const newN=Math.ceil(draft.total/draft.unit)+OVER;
+  const used=allHalves(state.cells);
+  let l=used;
+  if(draft.unit!==state.cfg.unit){ /* 칸 금액이 바뀌면 카테고리별 금액을 새 칸으로 다시 나눔 */
+    const h=counts();l=[];const pend={};
+    draft.cats.forEach(c=>{const w=(h[c.id]||0)*state.cfg.unit/2+(state.pending[c.id]||0);const n=Math.floor(w/(draft.unit/2));for(let i=0;i<n;i++)l.push(c.id);if(w-n*draft.unit/2)pend[c.id]=w-n*draft.unit/2});
+    state.pending=pend;
+  }
+  if(l.length>newN*2){toast("이미 칠한 칸이 새 예산보다 많아요. 총 예산을 늘리거나 칸을 먼저 지워주세요.","setMsg",true);return}
+  snap();touch();
+  const sameOrder=draft.unit===state.cfg.unit;
+  state.cfg=clone(draft);
+  if(sameOrder){resize(newN)}else{state.cells=Array.from({length:newN},()=>[-1,-1]);l.forEach((k,i)=>{state.cells[i>>1][i&1]=k})}
+  put(PFX+"cfg",clone(draft));builtFor="";
+  if(!cat(tool))tool=state.cfg.cats[0].id;
+  save();render();draft=clone(state.cfg);drawSet();toast("저장했어요.","setMsg");
+};
+$("logFilter").onchange=renderLog;
+
+/* 회고 카드: 캔버스로 그려서 이미지로 보여줌 */
+async function drawCard(){
+  try{await document.fonts.ready}catch(e){}
+  const cfg=state.cfg,u=cfg.unit,main=MAINn(),h=counts(),tot=allHalves(state.cells).length;
+  const overUsed=state.cells.slice(main).some(c=>c[0]>=0||c[1]>=0);
+  const n=overUsed?state.cells.length:main,rows=Math.ceil(n/10);
+  const W=1080,P=72,cs=50,g=6,gw=10*cs+9*g,gx=P,gy=250;
+  const legendH=cfg.cats.length*58+80;
+  const H=Math.max(gy+rows*(cs+g)+ (overUsed?24:0)+150, gy+legendH+150);
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");
+  const F="'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif",M="'IBM Plex Mono',monospace";
+  x.fillStyle="#f6f7f3";x.fillRect(0,0,W,H);
+  x.fillStyle="#23272b";x.font=`64px ${F}`;x.fillText(`${ym[1]}월 색칠 가계부`,P,130);
+  x.fillStyle="#6b7177";x.font=`28px ${F}`;x.fillText(`${ym[0]}년 · 1칸 ${won(u)}원 · 예산 ${man(cfg.total)}원`,P,180);
+  const col=k=>{const c=cat(k);return c?c.c:"#999"};
+  for(let i=0;i<n;i++){const r=Math.floor(i/10),c=i%10;const ox=gx+c*(cs+g),oy=gy+r*(cs+g)+(i>=main?24:0);
+    const cell=state.cells[i];x.fillStyle=i>=main?"#fbecea":"#e7e9e3";x.fillRect(ox,oy,cs,cs);
+    if(cell[0]>=0){x.fillStyle=col(cell[0]);x.beginPath();x.moveTo(ox,oy);x.lineTo(ox,oy+cs);x.lineTo(ox+cs,oy+cs);x.fill()}
+    if(cell[1]>=0){x.fillStyle=col(cell[1]);x.beginPath();x.moveTo(ox,oy);x.lineTo(ox+cs,oy);x.lineTo(ox+cs,oy+cs);x.fill()}}
+  const lx=gx+gw+56;let ly=gy+8;
+  x.fillStyle="#23272b";x.font=`600 54px ${M}`;x.fillText(`${fmtC(tot)}`,lx,ly+44);const tw=x.measureText(fmtC(tot)).width;
+  x.fillStyle="#6b7177";x.font=`26px ${F}`;x.fillText(`/ ${main}칸 칠함`,lx+tw+12,ly+44);
+  ly+=96;
+  const B=cfg.mode!=="free";
+  cfg.cats.slice().sort((a,b)=>h[b.id]-h[a.id]).forEach(c=>{
+    x.fillStyle=c.c;x.fillRect(lx,ly-22,26,26);
+    x.fillStyle="#23272b";x.font=`26px ${F}`;x.fillText(c.n.length>7?c.n.slice(0,7)+"…":c.n,lx+40,ly);
+    x.fillStyle=B&&h[c.id]>c.b/u*2?"#c94a4a":"#6b7177";x.font=`22px ${M}`;
+    const t=tot?Math.round(h[c.id]/tot*100):0;x.textAlign="right";x.fillText(`${fmtC(h[c.id])}칸 ${t}%`,W-P,ly);x.textAlign="left";ly+=50});
+  const foot=gy+Math.max(rows*(cs+g)+(overUsed?24:0),legendH)+70;
+  x.fillStyle="#d9ddd6";x.fillRect(P,foot-46,W-2*P,2);
+  x.fillStyle="#23272b";x.font=`28px ${F}`;
+  const left=main*2-tot;x.fillText(`무지출 ${state.ns.length}일 · `+(left>=0?`예산 ${fmtC(left)}칸 남김`:`예산 ${fmtC(-left)}칸 초과`),P,foot);
+  return cv;
+}
+$("makeCard").onclick=async()=>{const cv=await drawCard();$("cardImg").src=cv.toDataURL("image/png");$("cardBox").hidden=false;$("cardImg")._cv=cv};
+$("closeCard").onclick=()=>{$("cardBox").hidden=true};
+$("copyCard").onclick=()=>{const cv=$("cardImg")._cv;if(!cv)return;
+  const fail=()=>toast("이 화면에서는 복사가 안 돼요. 이미지를 길게 눌러 저장해주세요.","cardMsg",true);
+  try{const item=new ClipboardItem({"image/png":new Promise(r=>cv.toBlob(r,"image/png"))});navigator.clipboard.write([item]).then(()=>toast("이미지를 복사했어요. 카톡이나 인스타에 붙여넣으세요.","cardMsg"),fail)}catch(e){fail()}};
+
+/* 시트 붙여넣기 가져오기 */
+const SKIP_TYPES=["수입","고정지출","저축/투자","저축","투자"];
+const ALIAS={"꾸밈비":"꾸밈","교통/차량":"교통","교통비":"교통","자기개발":"자기계발","기타비":"기타","문화":"문화생활","선물":"선물/경조"};
+function matchCat(cats,name){
+  const n=name.trim();if(!n)return null;
+  const tries=[n,ALIAS[n],n.replace(/비$/,""),n.split("/")[0]].filter(Boolean);
+  for(const t of tries){const c=cats.find(c=>c.n===t);if(c)return c}
+  return cats.find(c=>c.n.length>1&&(n.startsWith(c.n)||c.n.startsWith(n)))||null;
+}
+function parseSheet(text){
+  const out=[],dateRe=/(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/;
+  text.split(/\r?\n/).forEach(line=>{
+    if(!line.trim())return;
+    const cells=line.split("\t").map(s=>s.trim());
+    const di=cells.findIndex(s=>dateRe.test(s));if(di<0)return;
+    const m=cells[di].match(dateRe);
+    let ai=-1;for(let i=cells.length-1;i>di;i--){if(/^[₩\\]?\s*-?[\d,]+(\.\d+)?\s*원?$/.test(cells[i])&&parseFloat(cells[i].replace(/[^\d.-]/g,""))>0){ai=i;break}}
+    if(ai<0)return;
+    const texts=cells.slice(di+1,ai).filter(s=>s);
+    let type=null;if(texts.length&&(SKIP_TYPES.includes(texts[0])||texts[0]==="변동지출"))type=texts.shift();
+    out.push({y:+m[1],mo:+m[2],d:+m[3],type,cat:texts[0]||"기타",memo:texts[1]||"",v:Math.round(parseFloat(cells[ai].replace(/[^\d.-]/g,""))),event:/이벤트비/.test(line)});
+  });
+  return out;
+}
+$("doImp").onclick=()=>{
+  const rows=parseSheet($("imp").value);
+  if(!rows.length){toast("날짜와 금액이 있는 줄을 찾지 못했어요. 시트에서 날짜 칸부터 금액 칸까지 함께 복사해주세요.","impMsg",true);return}
+  let other=0,typ=0,ev=0;const take=[];
+  rows.forEach(r=>{if(r.y!==ym[0]||r.mo!==ym[1]){other++;return}if(r.type&&r.type!=="변동지출"){typ++;return}if(r.event&&$("skipEvent").checked){ev++;return}take.push(r)});
+  if(!take.length){toast(`가져올 지출이 없어요. (다른 달 ${other}줄, 수입·고정·저축 ${typ}줄, 이벤트비 ${ev}줄 제외)`,"impMsg",true);return}
+  snap();
+  const cfg=clone(state.cfg);const made=[];
+  take.forEach(r=>{let c=matchCat(cfg.cats,r.cat);
+    if(!c){const id=Math.max(0,...cfg.cats.map(x=>x.id))+1;c={id,n:r.cat.slice(0,10),b:0,c:PALETTE[cfg.cats.length%PALETTE.length]};cfg.cats.push(c);made.push(c.n)}
+    r.k=c.id});
+  state=emptyState(cfg);state.ns=[];
+  take.forEach((r,i)=>{const k=r.k;state.log.push({id:Date.now()+i,d:`${r.y}-${pad(r.mo)}-${pad(r.d)}`,k,v:r.v,m:r.memo});
+    state.pending[k]=(state.pending[k]||0)+r.v;const half=cfg.unit/2;const n=Math.floor(state.pending[k]/half);const done=fillNext(k,n);state.pending[k]-=done*half;if(!state.pending[k])delete state.pending[k]});
+  put(PFX+"cfg",clone(cfg));builtFor="";save();render();draft=clone(state.cfg);drawSet();$("imp").value="";
+  const sum=take.reduce((a,r)=>a+r.v,0);
+  toast(`${take.length}건, ${won(sum)}원을 가져왔어요.`+(made.length?` 새 카테고리: ${made.join(", ")}.`:"")+` (빠진 줄: 다른 달 ${other}, 수입·고정·저축 ${typ}, 이벤트비 ${ev})`,"impMsg");
+};
+
+$("copyBk").onclick=()=>{const data={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PFX))data[k]=localStorage.getItem(k)}}catch(e){}
+  if(!Object.keys(data).length){toast("아직 저장된 기록이 없어요.","bkMsg",true);return}
+  const txt="색칠가계부백업:"+btoa(unescape(encodeURIComponent(JSON.stringify(data))));$("bk").value=txt;
+  const ok=()=>toast("복사했어요. 메모장이나 카톡에 붙여두세요.","bkMsg"),fail=()=>{$("bk").focus();$("bk").select();toast("자동 복사가 안 돼서 글자를 선택해뒀어요. 직접 복사해주세요.","bkMsg",true)};
+  try{navigator.clipboard.writeText(txt).then(ok,fail)}catch(e){fail()}};
+$("loadBk").onclick=()=>{try{const raw=$("bk").value.trim().replace(/^색칠가계부백업:/,"");const data=JSON.parse(decodeURIComponent(escape(atob(raw))));
+    let n=0;for(const k in data)if(k.startsWith(PFX)){localStorage.setItem(k,data[k]);n++}
+    if(!n)throw 0;builtFor="";load();toast(`불러왔어요. (${n}개 항목)`,"bkMsg");$("settings").hidden=false;draft=clone(state.cfg);drawSet()}
+  catch(e){toast("백업 글자를 읽지 못했어요. 처음부터 끝까지 빠짐없이 붙여넣었는지 확인해주세요.","bkMsg",true)}};
+
+load();
+</script>
+
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
+</body>
+</html>
