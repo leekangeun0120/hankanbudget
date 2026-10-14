@@ -365,6 +365,7 @@ function buildGrid(){
 }
 document.addEventListener("click",e=>{const b=e.target.closest(".cell");if(b)paint(+b.dataset.i)});
 function paint(i){
+  if(state.sorted){toast("색깔별로 모아보는 중에는 칸을 칠할 수 없어요. '날짜순으로 되돌리기'를 누른 뒤 칠해주세요.","toast",true);return}
   let c=state.cells[i];
   if(state.sample){if(tool===ERASER)return;snap();touch();c=state.cells[i];c[0]=tool}
   else if(tool===ERASER){if(c[0]<0&&c[1]<0)return;snap();if(c[1]>=0)c[1]=-1;else c[0]=-1}
@@ -398,7 +399,9 @@ function render(){
   $("sample").hidden=!state.sample;
   $("mBudget").setAttribute("aria-pressed",B);$("mFree").setAttribute("aria-pressed",!B);
   const col=k=>{const c=cat(k);return k>=0?(c?c.c:"#999"):"transparent"};
-  document.querySelectorAll(".cell").forEach(b=>{const c=state.cells[b.dataset.i];if(!c)return;
+  $("sort").textContent=state.sorted?"날짜순으로 되돌리기":"색깔별로 모으기";
+  const vc=viewCells();
+  document.querySelectorAll(".cell").forEach(b=>{const c=vc[b.dataset.i];if(!c)return;
     b.children[0].style.setProperty("--fill",col(c[0]));b.children[1].style.setProperty("--fill",col(c[1]));
     b.setAttribute("aria-label",`${+b.dataset.i+1}번 칸: `+c.map(k=>k>=0?(cat(k)?cat(k).n:"삭제됨"):"빈 반칸").join(", "))});
   const overUsed=state.cells.slice(main).some(c=>c[0]>=0||c[1]>=0);if(overUsed)overOpen=true;
@@ -484,9 +487,31 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();
   else toast(d?`${cat(k).n} ${won(v)}원 → 반칸 ${d}개 칠했어요.`:`${cat(k).n} ${won(v)}원을 잔돈으로 모아뒀어요.`);
 });
 $("undo").onclick=()=>{if(!history.length){toast("되돌릴 게 없어요.");return}state=JSON.parse(history.pop());builtFor="";save();render()};
-$("sort").onclick=()=>{snap();touch();const h=counts();const l=[];state.cfg.cats.forEach(c=>{for(let i=0;i<h[c.id];i++)l.push(c.id)});
+/* 색깔별 모아보기: 실제 칸 순서는 그대로 두고 보여줄 때만 정렬 */
+function sortedCells(){const h=counts();const l=[];state.cfg.cats.forEach(c=>{for(let i=0;i<h[c.id];i++)l.push(c.id)});
   allHalves(state.cells).filter(k=>!cat(k)).forEach(k=>l.push(k));
-  state.cells=state.cells.map(()=>[-1,-1]);l.forEach((k,i)=>{state.cells[i>>1][i&1]=k});save();render();toast("같은 색끼리 모았어요. 되돌리기로 원래 순서로 돌아갈 수 있어요.")};
+  const out=state.cells.map(()=>[-1,-1]);l.forEach((k,i)=>{out[i>>1][i&1]=k});return out}
+const viewCells=()=>state.sorted?sortedCells():state.cells;
+/* 지출 내역을 날짜순으로 다시 칠해서 원래 순서를 복원 (예전 버전에서 모으기로 섞인 칸도 복구) */
+function chronoCells(){
+  if(!state.log.length)return null;
+  const half=state.cfg.unit/2,cells=state.cells.map(()=>[-1,-1]),pend={};let pos=0;
+  const put=k=>{if(pos>=cells.length*2)return false;cells[pos>>1][pos&1]=k;pos++;return true};
+  const r={};
+  state.log.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id).forEach(e=>{
+    if(!cat(e.k))return;pend[e.k]=(pend[e.k]||0)+e.v;
+    while(pend[e.k]>=half){if(!put(e.k))break;pend[e.k]-=half;r[e.k]=(r[e.k]||0)+1}});
+  const h=counts();
+  for(const k in r)if(r[k]>(h[k]||0))return null; /* 내역보다 칸을 손으로 더 지운 경우는 복원하지 않음 */
+  for(const k in h){let extra=h[k]-(r[k]||0);while(extra-->0)put(+k)} /* 손으로 칠한 칸은 뒤에 이어 붙임 */
+  allHalves(state.cells).filter(k=>!cat(k)).forEach(put);
+  return cells;
+}
+$("sort").onclick=()=>{
+  if(!state.sorted){state.sorted=true;save();render();toast("같은 색끼리 모아서 보여줘요. 다시 누르면 날짜순으로 돌아가요.");return}
+  state.sorted=false;const c=chronoCells();if(c){state.cells=c}
+  save();render();toast(c?"날짜순으로 돌려놨어요.":"원래 칠한 순서로 돌아왔어요.");
+};
 $("clear").onclick=()=>{$("actions").hidden=true;$("confirm").hidden=false};
 $("no").onclick=()=>{$("actions").hidden=false;$("confirm").hidden=true};
 $("yes").onclick=()=>{snap();state=emptyState(clone(state.sample?defCfg():state.cfg));builtFor="";save();render();$("no").onclick()};
@@ -567,9 +592,9 @@ async function drawCard(){
   x.fillStyle="#f6f7f3";x.fillRect(0,0,W,H);
   x.fillStyle="#23272b";x.font=`64px ${F}`;x.fillText(`${ym[1]}월 색칠 가계부`,P,130);
   x.fillStyle="#6b7177";x.font=`28px ${F}`;x.fillText(`${ym[0]}년 · 1칸 ${won(u)}원 · 예산 ${man(cfg.total)}원`,P,180);
-  const col=k=>{const c=cat(k);return c?c.c:"#999"};
+  const col=k=>{const c=cat(k);return c?c.c:"#999"};const vcs=viewCells();
   for(let i=0;i<n;i++){const r=Math.floor(i/10),c=i%10;const ox=gx+c*(cs+g),oy=gy+r*(cs+g)+(i>=main?24:0);
-    const cell=state.cells[i];x.fillStyle=i>=main?"#fbecea":"#e7e9e3";x.fillRect(ox,oy,cs,cs);
+    const cell=vcs[i];x.fillStyle=i>=main?"#fbecea":"#e7e9e3";x.fillRect(ox,oy,cs,cs);
     if(cell[0]>=0){x.fillStyle=col(cell[0]);x.beginPath();x.moveTo(ox,oy);x.lineTo(ox,oy+cs);x.lineTo(ox+cs,oy+cs);x.fill()}
     if(cell[1]>=0){x.fillStyle=col(cell[1]);x.beginPath();x.moveTo(ox,oy);x.lineTo(ox+cs,oy);x.lineTo(ox+cs,oy+cs);x.fill()}}
   const lx=gx+gw+56;let ly=gy+8;
