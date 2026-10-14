@@ -114,7 +114,7 @@ input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);bord
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 .fields label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted)}
 .fields input,.fields select{font-family:var(--f-num)}
-.crow{display:grid;grid-template-columns:36px minmax(0,1fr) 92px 32px;gap:6px;align-items:center;margin-bottom:6px}
+.crow{display:grid;grid-template-columns:36px minmax(0,1fr) 84px 56px 32px;gap:6px;align-items:center;margin-bottom:6px}
 .crow input[type=color]{width:36px;height:34px;padding:2px;border-radius:8px}
 .crow .bud{display:flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted)}
 .crow .bud input{width:100%;font-family:var(--f-num);text-align:right}
@@ -122,7 +122,9 @@ input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);bord
 .sum{font-family:var(--f-num);font-size:.82rem;margin:8px 0 12px;color:var(--muted)}
 .sum.bad{color:var(--over)}
 .free .bud,.free .budhead{display:none!important}
-.free .crow{grid-template-columns:36px minmax(0,1fr) 32px}
+.free .crow{grid-template-columns:36px minmax(0,1fr) 56px 32px}
+.sepchk{display:flex;justify-content:center;align-items:center;height:34px}
+.sepchk input{width:18px;height:18px}
 details{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 summary{cursor:pointer;font-size:.88rem;color:var(--muted)}
 textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;margin:8px 0}
@@ -218,6 +220,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
     </div>
     <div id="crows"></div>
     <div class="row"><button class="ghost" id="addCat">+ 카테고리 추가</button></div>
+    <p class="hint">'따로 세기'를 켠 카테고리(예: 집, 월세, 경조사)는 생활비 칸에 칠하지 않고 아래 '따로 세는 칸판'에 칠해요. 이벤트비처럼 통장이 따로 있는 돈을 나눠 볼 때 써요.</p>
     <div class="sum" id="sSum"></div>
     <div class="row">
       <button class="primary" id="saveSet">저장</button>
@@ -261,7 +264,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
 
       <button class="ghost openOver" id="openEv"></button>
       <div class="evzone" id="evzone" hidden>
-        <div class="rowmark"><span>이벤트비 칸판 · 생활비와 따로 세요</span><button class="linkbtn ev" id="closeEv">닫기</button></div>
+        <div class="rowmark"><span>따로 세는 칸판 · 이벤트비와 따로 세기로 한 카테고리</span><button class="linkbtn ev" id="closeEv">닫기</button></div>
         <div class="total ev" id="evTotal"></div>
         <div class="grid" id="egrid"></div>
         <div class="evsum" id="evSum"></div>
@@ -367,6 +370,20 @@ function removeEvent(k,v){const half=state.cfg.unit/2;const cnt=state.ev.filter(
   const w=Math.max(0,cnt*half+(state.epend[k]||0)-v),target=Math.floor(w/half);let rm=cnt-target;
   for(let i=state.ev.length-1;i>=0&&rm>0;i--)if(state.ev[i]===k){state.ev.splice(i,1);rm--}
   const p=w-target*half;if(p)state.epend[k]=p;else delete state.epend[k]}
+const routeSep=e=>!!(e.e||(cat(e.k)&&cat(e.k).sep));
+/* 내역 목록을 날짜순으로 반칸 목록으로 바꿈 */
+function replay(list){const half=state.cfg.unit/2,pend={},halves=[],cnt={};
+  list.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id).forEach(e=>{if(!cat(e.k))return;pend[e.k]=(pend[e.k]||0)+e.v;
+    while(pend[e.k]>=half){halves.push(e.k);pend[e.k]-=half;cnt[e.k]=(cnt[e.k]||0)+1}if(!pend[e.k])delete pend[e.k]});
+  return {halves,pend,cnt}}
+/* '따로 세기' 설정이 바뀌면 생활비 칸과 따로 칸판을 내역 기준으로 다시 나눔 (손으로 칠한 칸은 그대로 유지) */
+function rerouteAll(oldRoute){
+  const old=replay(state.log.filter(e=>!oldRoute(e))).cnt,h=counts(),manual=[];
+  for(const k in h){const ex=h[k]-(old[k]||0);for(let i=0;i<ex;i++)manual.push(+k)}
+  const m=replay(state.log.filter(e=>!routeSep(e))),v=replay(state.log.filter(routeSep));
+  const cells=state.cells.map(()=>[-1,-1]);m.halves.concat(manual).slice(0,cells.length*2).forEach((k,i)=>{cells[i>>1][i&1]=k});
+  state.cells=cells;state.pending=m.pend;state.ev=v.halves;state.epend=v.pend;
+}
 const evWon=()=>state.ev.length*state.cfg.unit/2+Object.values(state.epend).reduce((a,b)=>a+b,0);
 const pad=n=>String(n).padStart(2,"0");
 const daysIn=()=>new Date(ym[0],ym[1],0).getDate();
@@ -422,6 +439,7 @@ function buildGrid(){
 document.addEventListener("click",e=>{const b=e.target.closest(".cell");if(!b)return;if(b.dataset.e!==undefined){toast("이벤트비는 '금액으로 칠하기'에서 이벤트비에 체크하고 적어요.");return}paint(+b.dataset.i)});
 function paint(i){
   if(state.sorted){toast("색깔별로 모아보는 중에는 칸을 칠할 수 없어요. '날짜순으로 되돌리기'를 누른 뒤 칠해주세요.","toast",true);return}
+  if(tool>=0&&cat(tool)&&cat(tool).sep){toast(`${cat(tool).n}은 따로 세는 카테고리예요. '금액으로 칠하기'로 적으면 따로 칸판에 칠해져요.`,"toast",true);return}
   let c=state.cells[i];
   if(state.sample){if(tool===ERASER)return;snap();touch();c=state.cells[i];c[0]=tool}
   else if(tool===ERASER){if(c[0]<0&&c[1]<0)return;snap();if(c[1]>=0)c[1]=-1;else c[0]=-1}
@@ -470,8 +488,9 @@ function render(){
     (tot>main*2?`<span class="won ovt">${fmtC(tot-main*2)}칸 초과</span>`:`<span class="won">남은 ${fmtC(main*2-tot)}칸</span>`);
 
   const pal=$("pal");pal.innerHTML="";
-  cfg.cats.forEach(c=>{const bc=c.b/u;const ov=B&&h[c.id]>bc*2;
-    pal.insertAdjacentHTML("beforeend",`<button class="chip${c.id===tool?" on":""}${ov?" ov":""}" data-k="${c.id}" style="--sw:${c.c}"><span class="sw"></span><span class="nm"></span><span class="ct">${B?`${fmtC(h[c.id])}/${fmtN(bc)}`:`${fmtC(h[c.id])}칸`}</span></button>`);
+  const sepH={};state.ev.forEach(k=>sepH[k]=(sepH[k]||0)+1);
+  cfg.cats.forEach(c=>{const bc=c.b/u;const ov=B&&!c.sep&&h[c.id]>bc*2;
+    pal.insertAdjacentHTML("beforeend",`<button class="chip${c.id===tool?" on":""}${ov?" ov":""}" data-k="${c.id}" style="--sw:${c.c}"><span class="sw"></span><span class="nm"></span><span class="ct">${c.sep?`따로 ${fmtC(sepH[c.id]||0)}`:B?`${fmtC(h[c.id])}/${fmtN(bc)}`:`${fmtC(h[c.id])}칸`}</span></button>`);
     pal.lastElementChild.querySelector(".nm").textContent=c.n});
   pal.insertAdjacentHTML("beforeend",`<button class="chip eraser${tool===ERASER?" on":""}" data-k="${ERASER}"><span class="sw"></span><span class="nm">지우개</span><span class="ct"></span></button>`);
   const sel=$("cat");const sv=sel.value;sel.innerHTML="";cfg.cats.forEach(c=>{const o=document.createElement("option");o.value=c.id;o.textContent=c.n;sel.appendChild(o)});
@@ -479,8 +498,8 @@ function render(){
 
   const prev=prevSpend();
   $("barLabel").textContent=B?"카테고리별 회고 (칠한 칸 / 예산 칸)":"카테고리별 회고 (칠한 칸 · 비율)";
-  const rows=B?cfg.cats.slice():cfg.cats.slice().sort((a,b)=>h[b.id]-h[a.id]);
-  const max=Math.max(1,...cfg.cats.map(c=>Math.max(h[c.id],B?c.b/u*2:0)));
+  const mc=cfg.cats.filter(c=>!c.sep);const rows=B?mc.slice():mc.slice().sort((a,b)=>h[b.id]-h[a.id]);
+  const max=Math.max(1,...mc.map(c=>Math.max(h[c.id],B?c.b/u*2:0)));
   $("bars").innerHTML=rows.map(c=>{const bh=c.b/u*2,ov=B&&h[c.id]>bh;
     let d="",dc="";if(prev&&c.n in prev){const diff=h[c.id]*u/2+(state.pending[c.id]||0)-prev[c.n];if(Math.abs(diff)>=u/2){d=(diff>0?"+":"−")+man(Math.abs(diff));dc=diff>0?"up":"down"}else d="="}
     return `<div class="bar${ov?" ov":""}" style="--sw:${c.c}"><span></span><div class="tr"><div class="fl" style="width:${h[c.id]/max*100}%"></div>${B?`<div class="bd" style="left:calc(${bh/max*100}% - 1px)"></div>`:""}</div><span class="v">${B?`${fmtC(h[c.id])} / ${fmtN(bh/2)}`:`${fmtC(h[c.id])} · ${tot?Math.round(h[c.id]/tot*100):0}%`}</span><span class="d ${dc}">${d}</span></div>`}).join("");
@@ -494,7 +513,7 @@ function render(){
 function renderEv(){
   const ev=state.sorted?state.cfg.cats.flatMap(c=>state.ev.filter(k=>k===c.id)).concat(state.ev.filter(k=>!cat(k))):state.ev;
   const has=ev.length||Object.keys(state.epend).length;const tot=evWon();
-  $("openEv").textContent=has?`이벤트비 칸판 열기 · ${fmtC(state.ev.length)}칸 ${won(tot)}원`:"이벤트비 칸판 열기";
+  $("openEv").textContent=has?`따로 세는 칸판 열기 · ${fmtC(state.ev.length)}칸 ${won(tot)}원`:"따로 세는 칸판 열기";
   $("evzone").hidden=!evOpen;$("openEv").hidden=evOpen;
   if(!evOpen)return;
   const n=Math.max(10,Math.ceil(Math.ceil(ev.length/2)/10)*10),g=$("egrid");
@@ -502,9 +521,14 @@ function renderEv(){
   const col=k=>k===undefined?"transparent":(cat(k)?cat(k).c:"#999");
   [...g.children].forEach((b,i)=>{b.children[0].style.setProperty("--fill",col(ev[i*2]));b.children[1].style.setProperty("--fill",col(ev[i*2+1]))});
   $("evTotal").innerHTML=`<span class="big">${fmtC(state.ev.length)}<small> 칸</small></span><span class="won">약 ${won(tot)}원</span>`;
-  const by={};state.log.filter(e=>e.e).forEach(e=>by[e.k]=(by[e.k]||0)+e.v);
-  const keys=Object.keys(by).sort((a,b)=>by[b]-by[a]);
-  $("evSum").innerHTML=keys.length?keys.map(k=>{const c=cat(+k);return `<span style="--sw:${c?c.c:"#999"}"><i></i>${c?c.n:"삭제됨"} <b>${won(by[k])}</b></span>`}).join(""):`<span style="color:var(--muted)">'금액으로 칠하기'에서 이벤트비에 체크하고 적으면 여기에 칠해져요. 생활비 예산에는 들어가지 않아요.</span>`;
+  /* 이벤트비 묶음 + 따로 세는 카테고리별 묶음 */
+  const evBy={},sepBy={};state.log.filter(routeSep).forEach(e=>{if(e.e)evBy[e.k]=(evBy[e.k]||0)+e.v;else sepBy[e.k]=(sepBy[e.k]||0)+e.v});
+  const chip=(k,v,lab)=>{const c=cat(+k);return `<span style="--sw:${c?c.c:"#999"}"><i></i>${lab||(c?c.n:"삭제됨")} <b>${won(v)}</b>${c&&c.sep&&c.b&&!lab?` <small style="color:var(--muted)">/ ${man(c.b)}</small>`:""}</span>`};
+  const evTot=Object.values(evBy).reduce((a,b)=>a+b,0);
+  const parts=[];
+  state.cfg.cats.filter(c=>c.sep).forEach(c=>parts.push(chip(c.id,sepBy[c.id]||0)));
+  if(evTot)parts.push(`<span><b style="font-family:var(--f-body)">이벤트비</b> <b>${won(evTot)}</b> <small style="color:var(--muted)">(`+Object.keys(evBy).map(k=>`${cat(+k)?cat(+k).n:"삭제됨"} ${man(evBy[k])}`).join(", ")+`)</small></span>`);
+  $("evSum").innerHTML=parts.length?parts.join(""):`<span style="color:var(--muted)">'금액으로 칠하기'에서 이벤트비에 체크하거나, 설정에서 '따로 세기'로 고른 카테고리로 적으면 여기에 칠해져요. 생활비 예산에는 들어가지 않아요.</span>`;
 }
 function renderLog(){
   const f=$("logFilter"),fv=f.value||"all";
@@ -520,8 +544,8 @@ function renderLog(){
     sum+=e.v;head.lastElementChild.textContent=won(sum)+"원";
     const c=cat(e.k);const r=document.createElement("div");r.className="lrow";r.style.setProperty("--sw",c?c.c:"#999");
     r.innerHTML=`<span class="dot"></span><span class="t"><span></span><small></small></span><span class="a">${won(e.v)}</span><button aria-label="이 내역 지우기">×</button>`;
-    r.querySelector(".t span").textContent=e.m||(c?c.n:"삭제된 카테고리");r.querySelector(".t small").textContent=e.m&&c?c.n:"";if(e.e)r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">이벤트비</span>');
-    r.querySelector("button").onclick=()=>{snap();state.log=state.log.filter(x=>x.id!==e.id);if(e.e)removeEvent(e.k,e.v);else if(cat(e.k))removeAmount(e.k,e.v);save();render();toast(`${won(e.v)}원 내역을 지우고 칸도 지웠어요. 되돌리기로 살릴 수 있어요.`)};
+    r.querySelector(".t span").textContent=e.m||(c?c.n:"삭제된 카테고리");r.querySelector(".t small").textContent=e.m&&c?c.n:"";if(e.e)r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">이벤트비</span>');else if(routeSep(e))r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">따로</span>');
+    r.querySelector("button").onclick=()=>{snap();state.log=state.log.filter(x=>x.id!==e.id);if(routeSep(e))removeEvent(e.k,e.v);else if(cat(e.k))removeAmount(e.k,e.v);save();render();toast(`${won(e.v)}원 내역을 지우고 칸도 지웠어요. 되돌리기로 살릴 수 있어요.`)};
     box.appendChild(r)});
 }
 function renderCal(){
@@ -548,9 +572,9 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();
   if(!day.startsWith(`${ym[0]}-${pad(ym[1])}`)){toast("이 달에 속한 날짜를 골라주세요. 다른 달은 위의 ‹ › 로 옮겨서 적어요.","toast",true);return}
   snap();touch();
   const d0=+day.slice(8);state.ns=state.ns.filter(x=>x!==d0);
-  if($("isEv").checked){state.log.push({id:Date.now(),d:day,k,v,m:$("memo").value.trim(),e:true});$("memo").value="";
+  if($("isEv").checked||cat(k).sep){const ent={id:Date.now(),d:day,k,v,m:$("memo").value.trim()};if($("isEv").checked)ent.e=true;state.log.push(ent);$("memo").value="";
     const n=addEvent(k,v);evOpen=true;save();render();$("amt").value="";
-    toast(`이벤트비로 ${cat(k).n} ${won(v)}원 → 반칸 ${n}개 칠했어요.`);return}
+    toast(`${ent.e?"이벤트비로 ":""}${cat(k).n} ${won(v)}원 → 따로 칸판에 반칸 ${n}개 칠했어요.`);return}
   state.log.push({id:Date.now(),d:day,k,v,m:$("memo").value.trim()});$("memo").value="";
   state.pending[k]=(state.pending[k]||0)+v;const n=Math.floor(state.pending[k]/half);
   const before=state.cells.slice(MAINn()).some(c=>c[0]>=0||c[1]>=0);
@@ -569,12 +593,12 @@ function sortedCells(){const h=counts();const l=[];state.cfg.cats.forEach(c=>{fo
 const viewCells=()=>state.sorted?sortedCells():state.cells;
 /* 지출 내역을 날짜순으로 다시 칠해서 원래 순서를 복원 (예전 버전에서 모으기로 섞인 칸도 복구) */
 function chronoCells(){
-  if(!state.log.some(e=>!e.e))return null;
+  if(!state.log.some(e=>!routeSep(e)))return null;
   const half=state.cfg.unit/2,cells=state.cells.map(()=>[-1,-1]),pend={};let pos=0;
   const put=k=>{if(pos>=cells.length*2)return false;cells[pos>>1][pos&1]=k;pos++;return true};
   const r={};
   state.log.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id).forEach(e=>{
-    if(!cat(e.k)||e.e)return;pend[e.k]=(pend[e.k]||0)+e.v;
+    if(!cat(e.k)||routeSep(e))return;pend[e.k]=(pend[e.k]||0)+e.v;
     while(pend[e.k]>=half){if(!put(e.k))break;pend[e.k]-=half;r[e.k]=(r[e.k]||0)+1}});
   const h=counts();
   for(const k in r)if(r[k]>(h[k]||0))return null; /* 내역보다 칸을 손으로 더 지운 경우는 복원하지 않음 */
@@ -606,13 +630,14 @@ $("cancelSet").onclick=()=>{$("settings").hidden=true};
 function drawSet(){
   const free=state.cfg.mode==="free";$("settings").classList.toggle("free",free);
   $("sTotal").value=draft.total/10000;$("sUnit").value=draft.unit;
-  const box=$("crows");box.innerHTML=`<div class="crow" style="font-size:.75rem;color:var(--muted)"><span>색</span><span>이름</span><span class="budhead" style="text-align:right">예산(만원)</span><span></span></div>`;
+  const box=$("crows");box.innerHTML=`<div class="crow" style="font-size:.75rem;color:var(--muted)"><span>색</span><span>이름</span><span class="budhead" style="text-align:right">예산(만원)</span><span style="text-align:center">따로 세기</span><span></span></div>`;
   draft.cats.forEach((c,i)=>{const r=document.createElement("div");r.className="crow";
-    r.innerHTML=`<input type="color" id="cc${c.id}" aria-label="${i+1}번째 카테고리 색"><input id="cn${c.id}" maxlength="10" aria-label="${i+1}번째 카테고리 이름"><span class="bud"><input id="cb${c.id}" type="number" min="0" step="0.5" inputmode="decimal" aria-label="${i+1}번째 카테고리 예산(만원)"></span><button class="del" aria-label="카테고리 삭제">×</button>`;
+    r.innerHTML=`<input type="color" id="cc${c.id}" aria-label="${i+1}번째 카테고리 색"><input id="cn${c.id}" maxlength="10" aria-label="${i+1}번째 카테고리 이름"><span class="bud"><input id="cb${c.id}" type="number" min="0" step="0.5" inputmode="decimal" aria-label="${i+1}번째 카테고리 예산(만원)"></span><label class="sepchk"><input type="checkbox" id="cs${c.id}" aria-label="${i+1}번째 카테고리 따로 세기"></label><button class="del" aria-label="카테고리 삭제">×</button>`;
     r.querySelector("[type=color]").value=c.c;r.querySelector(`#cn${c.id}`).value=c.n;r.querySelector(`#cb${c.id}`).value=c.b/10000;
     r.querySelector("[type=color]").oninput=e=>{c.c=e.target.value};
     r.querySelector(`#cn${c.id}`).oninput=e=>{c.n=e.target.value};
     r.querySelector(`#cb${c.id}`).oninput=e=>{c.b=Math.max(0,parseFloat(e.target.value)||0)*10000;sumLine()};
+    const cs=r.querySelector(`#cs${c.id}`);cs.checked=!!c.sep;cs.onchange=e=>{c.sep=e.target.checked;sumLine()};
     r.querySelector(".del").onclick=()=>{
       if(allHalves(state.cells).includes(c.id)||state.pending[c.id]||state.log.some(e=>e.k===c.id)){toast(`'${c.n}'은 이번 달에 칠한 칸이 있어서 지울 수 없어요. 지우개로 먼저 지워주세요.`,"setMsg",true);return}
       if(draft.cats.length<=1){toast("카테고리는 하나 이상 있어야 해요.","setMsg",true);return}
@@ -622,9 +647,10 @@ function drawSet(){
 }
 function sumLine(){
   const cells=Math.ceil(draft.total/draft.unit);$("sCells").textContent=`${cells}칸 (${Math.ceil(cells/10)}줄)`;
-  const s=draft.cats.reduce((a,c)=>a+c.b,0),left=draft.total-s,el=$("sSum");
-  if(state.cfg.mode==="free"){el.textContent=`총액모드에서는 카테고리별 예산 없이 ${man(draft.total)}원만 지키면 돼요.`;el.classList.remove("bad");return}
-  el.textContent=`카테고리 합계 ${man(s)}원 / 총 ${man(draft.total)}원 · `+(left>=0?`${man(left)}원 남음`:`${man(-left)}원 넘침`);
+  const s=draft.cats.filter(c=>!c.sep).reduce((a,c)=>a+c.b,0),left=draft.total-s,el=$("sSum");
+  const seps=draft.cats.filter(c=>c.sep),sepTxt=seps.length?` · 따로 세는 카테고리: ${seps.map(c=>c.n+(c.b?` ${man(c.b)}`:"")).join(", ")} (총 예산에 안 들어가요)`:"";
+  if(state.cfg.mode==="free"){el.textContent=`총액모드에서는 카테고리별 예산 없이 ${man(draft.total)}원만 지키면 돼요.`+sepTxt;el.classList.remove("bad");return}
+  el.textContent=`생활비 카테고리 합계 ${man(s)}원 / 총 ${man(draft.total)}원 · `+(left>=0?`${man(left)}원 남음`:`${man(-left)}원 넘침`)+sepTxt;
   el.classList.toggle("bad",left<0);
 }
 $("sTotal").oninput=e=>{draft.total=Math.max(1,parseFloat(e.target.value)||0)*10000;sumLine()};
@@ -646,9 +672,13 @@ $("saveSet").onclick=()=>{
   }
   if(l.length>newN*2){toast("이미 칠한 칸이 새 예산보다 많아요. 총 예산을 늘리거나 칸을 먼저 지워주세요.","setMsg",true);return}
   snap();touch();
+  const oldSep=new Set(state.cfg.cats.filter(c=>c.sep).map(c=>c.id)),oldRoute=e=>!!(e.e||oldSep.has(e.k));
+  const sepChanged=draft.cats.some(c=>!!c.sep!==oldSep.has(c.id));
   const sameOrder=draft.unit===state.cfg.unit;
   state.cfg=clone(draft);
   if(sameOrder){resize(newN)}else{state.cells=Array.from({length:newN},()=>[-1,-1]);l.forEach((k,i)=>{state.cells[i>>1][i&1]=k})}
+  if(sepChanged)rerouteAll(oldRoute);else if(!sameOrder){const v=replay(state.log.filter(routeSep));state.ev=v.halves;state.epend=v.pend}
+  if(sepChanged&&state.ev.length)evOpen=true;
   put(PFX+"cfg",clone(draft));builtFor="";
   if(!cat(tool))tool=state.cfg.cats[0].id;
   save();render();draft=clone(state.cfg);drawSet();toast("저장했어요.","setMsg");
@@ -662,7 +692,7 @@ async function drawCard(){
   const overUsed=state.cells.slice(main).some(c=>c[0]>=0||c[1]>=0);
   const n=overUsed?state.cells.length:main,rows=Math.ceil(n/10);
   const W=1080,P=72,cs=50,g=6,gw=10*cs+9*g,gx=P,gy=250;
-  const legendH=cfg.cats.length*58+80;
+  const legendH=cfg.cats.filter(c=>!c.sep).length*58+80;
   const H=Math.max(gy+rows*(cs+g)+ (overUsed?24:0)+150, gy+legendH+150);
   const cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");
   const F="'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif",M="'IBM Plex Mono',monospace";
@@ -679,7 +709,7 @@ async function drawCard(){
   x.fillStyle="#6b7177";x.font=`26px ${F}`;x.fillText(`/ ${main}칸 칠함`,lx+tw+12,ly+44);
   ly+=96;
   const B=cfg.mode!=="free";
-  cfg.cats.slice().sort((a,b)=>h[b.id]-h[a.id]).forEach(c=>{
+  cfg.cats.filter(c=>!c.sep).sort((a,b)=>h[b.id]-h[a.id]).forEach(c=>{
     x.fillStyle=c.c;x.fillRect(lx,ly-22,26,26);
     x.fillStyle="#23272b";x.font=`26px ${F}`;x.fillText(c.n.length>7?c.n.slice(0,7)+"…":c.n,lx+40,ly);
     x.fillStyle=B&&h[c.id]>c.b/u*2?"#c94a4a":"#6b7177";x.font=`22px ${M}`;
@@ -687,7 +717,7 @@ async function drawCard(){
   const foot=gy+Math.max(rows*(cs+g)+(overUsed?24:0),legendH)+70;
   x.fillStyle="#d9ddd6";x.fillRect(P,foot-46,W-2*P,2);
   x.fillStyle="#23272b";x.font=`28px ${F}`;
-  const left=main*2-tot;x.fillStyle="#6b7177";x.font=`22px ${F}`;x.textAlign="right";x.fillText("한칸한칸",W-P,foot);x.textAlign="left";x.fillStyle="#23272b";x.font=`28px ${F}`;x.fillText(`무지출 ${state.ns.length}일 · `+(left>=0?`예산 ${fmtC(left)}칸 남김`:`예산 ${fmtC(-left)}칸 초과`)+(state.ev.length?` · 이벤트비 ${fmtC(state.ev.length)}칸`:""),P,foot);
+  const left=main*2-tot;x.fillStyle="#6b7177";x.font=`22px ${F}`;x.textAlign="right";x.fillText("한칸한칸",W-P,foot);x.textAlign="left";x.fillStyle="#23272b";x.font=`28px ${F}`;x.fillText(`무지출 ${state.ns.length}일 · `+(left>=0?`예산 ${fmtC(left)}칸 남김`:`예산 ${fmtC(-left)}칸 초과`)+(state.ev.length?` · 따로 ${fmtC(state.ev.length)}칸`:""),P,foot);
   return cv;
 }
 $("makeCard").onclick=async()=>{const cv=await drawCard();$("cardImg").src=cv.toDataURL("image/png");$("cardBox").hidden=false;$("cardImg")._cv=cv};
@@ -733,12 +763,12 @@ $("doImp").onclick=()=>{
     r.k=c.id});
   state=emptyState(cfg);state.ns=[];
   take.forEach((r,i)=>{const k=r.k;const ent={id:Date.now()+i,d:`${r.y}-${pad(r.mo)}-${pad(r.d)}`,k,v:r.v,m:r.memo};
-    if(r.ev){ent.e=true;state.log.push(ent);addEvent(k,r.v);return}
+    if(r.ev)ent.e=true;if(r.ev||cat(k)&&cat(k).sep){state.log.push(ent);addEvent(k,r.v);return}
     state.log.push(ent);
     state.pending[k]=(state.pending[k]||0)+r.v;const half=cfg.unit/2;const n=Math.floor(state.pending[k]/half);const done=fillNext(k,n);state.pending[k]-=done*half;if(!state.pending[k])delete state.pending[k]});
   put(PFX+"cfg",clone(cfg));builtFor="";save();render();draft=clone(state.cfg);drawSet();$("imp").value="";
-  const sum=take.filter(r=>!r.ev).reduce((a,r)=>a+r.v,0),esum=take.filter(r=>r.ev).reduce((a,r)=>a+r.v,0);if(ev)evOpen=true;render();
-  toast(`생활비 ${take.length-ev}건 ${won(sum)}원`+(ev?`, 이벤트비 ${ev}건 ${won(esum)}원`:"")+`을 가져왔어요.`+(made.length?` 새 카테고리: ${made.join(", ")}.`:"")+` (빠진 줄: 다른 달 ${other}, 수입·고정·저축 ${typ})`,"impMsg");
+  const isS=r=>r.ev||(cat(r.k)&&cat(r.k).sep),sc=take.filter(isS).length,sum=take.filter(r=>!isS(r)).reduce((a,r)=>a+r.v,0),esum=take.filter(isS).reduce((a,r)=>a+r.v,0);if(sc)evOpen=true;render();
+  toast(`생활비 ${take.length-sc}건 ${won(sum)}원`+(sc?`, 따로 세는 돈 ${sc}건 ${won(esum)}원(이벤트비 ${ev}건 포함)`:"")+`을 가져왔어요.`+(made.length?` 새 카테고리: ${made.join(", ")}.`:"")+` (빠진 줄: 다른 달 ${other}, 수입·고정·저축 ${typ})`,"impMsg");
 };
 
 $("copyBk").onclick=()=>{const data={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PFX))data[k]=localStorage.getItem(k)}}catch(e){}
