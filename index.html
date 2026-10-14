@@ -145,13 +145,16 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
 .loghead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
 .loghead h2{font-size:1.05rem;font-weight:400;margin:0}
 .lday{font-family:var(--f-num);font-size:.75rem;color:var(--muted);margin:12px 0 4px;display:flex;justify-content:space-between}
-.lrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto 28px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.lrow{display:grid;grid-template-columns:10px minmax(0,1fr) auto 28px 28px;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
 .lrow .dot{width:10px;height:10px;border-radius:3px;background:var(--sw)}
 .lrow .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lrow .t small{color:var(--muted);margin-left:6px}
 .lrow .a{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:.9rem}
 .lrow button{border:0;background:none;color:var(--muted);font-size:1.1rem;padding:0;height:28px}
-.lrow button:hover{color:var(--over)}
+.lrow .rm:hover{color:var(--over)}.lrow .ed:hover{color:var(--accent)}
+.lrow .t{cursor:pointer}
+.lrow.editing{background:var(--evbg)}
+.formsheet.editing{box-shadow:0 0 0 2px var(--accent)}
 .empty{color:var(--muted);font-size:.88rem;padding:10px 0}
 /* 무지출 달력 */
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
@@ -179,6 +182,9 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
 .fshead .label{margin:0}
 .xclose{display:none}
 .fab,.tabbar,.scrim{display:none}
+.snack{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--sheet);padding:10px 16px;border-radius:999px;font-size:.88rem;z-index:50;transition:opacity .2s,transform .2s;max-width:calc(100% - 32px)}
+.snack.on{opacity:1;transform:translate(-50%,0)}
+@media (min-width:821px){.snack{bottom:24px}}
 /* ===== 폰 화면: 앱처럼 ===== */
 @media (max-width:820px){
   .wrap{padding-block:12px calc(150px + env(safe-area-inset-bottom,0px))}
@@ -347,14 +353,15 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
       </section>
 
       <section class="sheet formsheet" id="formSheet" data-tabs="form">
-        <div class="fshead"><p class="label">금액으로 칠하기</p><button class="ghost xclose" id="xForm" aria-label="입력 닫기">닫기</button></div>
+        <div class="fshead"><p class="label" id="formTitle">금액으로 칠하기</p><button class="ghost xclose" id="xForm" aria-label="입력 닫기">닫기</button></div>
         <form class="row" id="addForm">
           <input id="amt" inputmode="numeric" placeholder="금액 예: 12500" aria-label="금액(원)">
           <select id="cat" aria-label="카테고리"></select>
           <input id="memo" maxlength="30" placeholder="메모 (예: 올리브영)" aria-label="메모">
           <input id="day" type="date" aria-label="날짜">
           <label class="evchk" for="isEv"><input type="checkbox" id="isEv"> 이벤트비</label>
-          <button class="primary" type="submit">칠하기</button>
+          <button class="primary" type="submit" id="submitBtn">칠하기</button>
+          <button class="ghost" type="button" id="cancelEdit" hidden>수정 취소</button>
         </form>
         <p class="hint" id="pending"></p>
         <div class="toast" id="toast" role="status"></div>
@@ -479,7 +486,7 @@ function load(){
     state=(cur&&!hasAny()&&!get(PFX+"cfg"))?sample():emptyState(defCfg())}
   if(state.cells.length!==Nn())resize(Nn());
   {const c0=state.cfg.cats.find(c=>!c.sep)||state.cfg.cats[0];tool=c0?c0.id:ERASER}
-  history=[];overOpen=false;evOpen=false;$("settings").hidden=true;$("cardBox").hidden=true;
+  history=[];overOpen=false;evOpen=false;if(typeof editingId!=="undefined"&&editingId!==null)endEdit();$("settings").hidden=true;$("cardBox").hidden=true;
   const first=`${ym[0]}-${pad(ym[1])}-01`,last=`${ym[0]}-${pad(ym[1])}-${pad(daysIn())}`;
   $("day").min=first;$("day").max=last;$("day").value=isCurMonth()?todayStr():first;
   render();
@@ -590,6 +597,26 @@ function render(){
   renderLog();renderCal();
   $("pending").textContent=p.length?`모아둔 잔돈: ${p.join(" · ")}`:`${won(u/2)}원이 안 되는 돈은 모아뒀다가 다 차면 반칸을 칠해요.`;
 }
+/* 내역을 고치면: 손으로 칠한 칸은 그대로 두고, 내역으로 칠한 칸은 날짜순으로 다시 칠함 */
+function rebuildWith(mutate){
+  const old=replay(state.log.filter(e=>!routeSep(e))).cnt,h=counts(),manual=[];
+  for(const k in h){const ex=h[k]-(old[k]||0);for(let i=0;i<ex;i++)manual.push(+k)}
+  mutate();
+  const m=replay(state.log.filter(e=>!routeSep(e))),v=replay(state.log.filter(routeSep));
+  const cells=state.cells.map(()=>[-1,-1]);m.halves.concat(manual).slice(0,cells.length*2).forEach((k,i)=>{cells[i>>1][i&1]=k});
+  state.cells=cells;state.pending=m.pend;state.ev=v.halves;state.epend=v.pend;
+}
+let editingId=null;
+function startEdit(id){const e=state.log.find(x=>x.id===id);if(!e)return;
+  if(!cat(e.k)){toast("삭제된 카테고리의 내역은 고칠 수 없어요. 지우고 다시 적어주세요.","toast",true);return}
+  editingId=id;$("amt").value=e.v;$("cat").value=e.k;$("memo").value=e.m||"";$("day").value=e.d;$("isEv").checked=!!e.e;
+  $("submitBtn").textContent="수정하기";$("cancelEdit").hidden=false;$("formTitle").textContent="지출 고치기";$("formSheet").classList.add("editing");
+  document.querySelectorAll(".lrow").forEach(r=>r.classList.toggle("editing",+r.dataset.id===id));
+  if(matchMedia("(max-width:820px)").matches)openForm();else{$("formSheet").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>{try{$("amt").focus()}catch(_){}},200)}}
+function endEdit(){editingId=null;$("amt").value="";$("memo").value="";$("isEv").checked=false;
+  $("submitBtn").textContent="칠하기";$("cancelEdit").hidden=true;$("formTitle").textContent="금액으로 칠하기";$("formSheet").classList.remove("editing");
+  document.querySelectorAll(".lrow.editing").forEach(r=>r.classList.remove("editing"));
+  if(isCurMonth())$("day").value=todayStr();}
 function renderEv(){
   const ev=state.sorted?state.cfg.cats.flatMap(c=>state.ev.filter(k=>k===c.id)).concat(state.ev.filter(k=>!cat(k))):state.ev;
   const has=ev.length||Object.keys(state.epend).length;const tot=evWon();
@@ -622,10 +649,11 @@ function renderLog(){
   list.forEach(e=>{
     if(e.d!==cur){cur=e.d;sum=0;const dt=new Date(e.d+"T00:00");head=document.createElement("div");head.className="lday";head.innerHTML=`<span>${dt.getMonth()+1}월 ${dt.getDate()}일 (${wk[dt.getDay()]})</span><span></span>`;box.appendChild(head)}
     sum+=e.v;head.lastElementChild.textContent=won(sum)+"원";
-    const c=cat(e.k);const r=document.createElement("div");r.className="lrow";r.style.setProperty("--sw",c?c.c:"#999");
-    r.innerHTML=`<span class="dot"></span><span class="t"><span></span><small></small></span><span class="a">${won(e.v)}</span><button aria-label="이 내역 지우기">×</button>`;
+    const c=cat(e.k);const r=document.createElement("div");r.className="lrow"+(e.id===editingId?" editing":"");r.dataset.id=e.id;r.style.setProperty("--sw",c?c.c:"#999");
+    r.innerHTML=`<span class="dot"></span><span class="t"><span></span><small></small></span><span class="a">${won(e.v)}</span><button class="ed" aria-label="이 내역 고치기">✎</button><button class="rm" aria-label="이 내역 지우기">×</button>`;
+    r.querySelector(".ed").onclick=()=>startEdit(e.id);r.querySelector(".t").onclick=()=>startEdit(e.id);
     r.querySelector(".t span").textContent=e.m||(c?c.n:"삭제된 카테고리");r.querySelector(".t small").textContent=e.m&&c?c.n:"";if(e.e)r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">이벤트비</span>');else if(routeSep(e))r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">따로</span>');
-    r.querySelector("button").onclick=()=>{snap();state.log=state.log.filter(x=>x.id!==e.id);if(routeSep(e))removeEvent(e.k,e.v);else if(cat(e.k))removeAmount(e.k,e.v);save();render();toast(`${won(e.v)}원 내역을 지우고 칸도 지웠어요. 되돌리기로 살릴 수 있어요.`)};
+    r.querySelector(".rm").onclick=()=>{snap();state.log=state.log.filter(x=>x.id!==e.id);if(routeSep(e))removeEvent(e.k,e.v);else if(cat(e.k))removeAmount(e.k,e.v);save();render();toast(`${won(e.v)}원 내역을 지우고 칸도 지웠어요. 되돌리기로 살릴 수 있어요.`)};
     box.appendChild(r)});
 }
 function renderCal(){
@@ -642,6 +670,8 @@ function renderCal(){
     box.appendChild(b)}
   const n=state.ns.length;$("calNote").textContent=n?`이번 달 무지출 ${n}일. 돈을 안 쓴 날을 눌러 표시해요.`:"돈을 한 푼도 안 쓴 날을 눌러 표시해요. 내역을 적은 날은 쓴 금액이 보여요.";
 }
+function showMsg(m){let el=$("snack");if(!el){el=document.createElement("div");el.id="snack";el.className="snack";el.setAttribute("role","status");document.body.appendChild(el)}
+  el.textContent=m;el.classList.add("on");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("on"),2600)}
 let tt;function toast(m,el="toast",err=false){const e=$(el);e.textContent=m;e.classList.toggle("err",err);clearTimeout(e._t);e._t=setTimeout(()=>e.textContent="",4000)}
 
 $("pal").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;tool=+b.dataset.k;if(tool>=0)$("cat").value=tool;render()});
@@ -650,6 +680,13 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();
   if(!v||v<=0){toast("금액을 숫자로 적어주세요.","toast",true);return}
   const day=$("day").value||($("day").min);
   if(!day.startsWith(`${ym[0]}-${pad(ym[1])}`)){toast("이 달에 속한 날짜를 골라주세요. 다른 달은 위의 ‹ › 로 옮겨서 적어요.","toast",true);return}
+  if(editingId!==null){
+    const ent=state.log.find(x=>x.id===editingId);if(!ent){endEdit();return}
+    snap();
+    rebuildWith(()=>{ent.v=v;ent.k=k;ent.d=day;ent.m=$("memo").value.trim();if($("isEv").checked)ent.e=true;else delete ent.e});
+    state.ns=state.ns.filter(x=>x!==+day.slice(8));
+    if(routeSep(ent))evOpen=true;
+    save();endEdit();render();closeForm();toast(`${cat(k).n} ${won(v)}원으로 고쳤어요. 칸도 날짜순으로 다시 칠했어요.`);showMsg(`${cat(k).n} ${won(v)}원으로 고쳤어요.`);return}
   snap();touch();
   const d0=+day.slice(8);state.ns=state.ns.filter(x=>x!==d0);
   if($("isEv").checked||cat(k).sep){const ent={id:Date.now(),d:day,k,v,m:$("memo").value.trim()};if($("isEv").checked)ent.e=true;state.log.push(ent);$("memo").value="";
@@ -891,7 +928,8 @@ function setTab(t){document.body.dataset.tab=t;
 document.querySelectorAll(".tabbar button").forEach(x=>x.onclick=()=>setTab(x.dataset.go));
 const openForm=()=>{document.body.classList.add("form-open");setTimeout(()=>{try{$("amt").focus()}catch(e){}},250)};
 const closeForm=()=>document.body.classList.remove("form-open");
-$("fab").onclick=openForm;$("xForm").onclick=closeForm;
+$("fab").onclick=()=>{if(editingId!==null)endEdit();openForm()};$("xForm").onclick=()=>{if(editingId!==null)endEdit();closeForm()};
+$("cancelEdit").onclick=()=>{endEdit();closeForm()};
 $("scrim").onclick=()=>{closeForm();if(!$("settings").hidden)$("cancelSet").click()};
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeForm()}});
 setTab((()=>{try{return localStorage.getItem(PFX+"tab")||"grid"}catch(e){return "grid"}})());
