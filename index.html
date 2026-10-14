@@ -98,6 +98,14 @@ input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);bord
 .actions{display:flex;flex-wrap:wrap;gap:6px}
 .confirm{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.88rem}
 .danger{background:var(--over);color:var(--sheet);border:0;border-radius:8px;padding:6px 12px}
+.welcome{margin-bottom:16px;border-color:var(--accent)}
+.welcome h2{font-size:1.25rem;font-weight:400;margin:0 0 6px}
+.welcome .label{margin-top:14px}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.choice{display:flex;flex-direction:column;gap:4px;text-align:left;background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.choice b{font-weight:400;font-size:1rem}
+.choice span{font-size:.82rem;color:var(--muted);line-height:1.45}
+.choice[aria-checked="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .toast{min-height:1.4em;font-size:.82rem;color:var(--accent)}
 .toast.err{color:var(--over)}
 /* 설정 */
@@ -177,6 +185,24 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
       <button class="ghost" id="openSet">예산·카테고리 설정</button>
     </div>
   </header>
+
+  <section class="sheet welcome" id="welcome" hidden>
+    <h2>한칸한칸을 시작해볼까요?</h2>
+    <p class="hint" style="margin-top:0">한 달 생활비를 칸으로 나눠, 쓴 만큼 카테고리 색으로 채워가는 가계부예요. 두 가지만 정하면 바로 시작할 수 있어요.</p>
+    <p class="label">1. 예산을 어떻게 정할까요?</p>
+    <div class="choices" role="radiogroup" aria-label="예산 방식">
+      <button class="choice" id="wBudget" role="radio" aria-checked="false"><b>카테고리별로 예산 짜기</b><span>식비 30만원, 꾸밈 20만원처럼 카테고리마다 예산을 정하고, 넘치면 빨간색으로 알려줘요.</span></button>
+      <button class="choice" id="wFree" role="radio" aria-checked="true"><b>총액만 정하기</b><span>카테고리는 색으로 나누기만 하고, 전체 예산 안에서만 쓰면 돼요. 처음이라면 이게 편해요.</span></button>
+    </div>
+    <p class="label" style="margin-top:16px">2. 한 달 생활비는 얼마인가요?</p>
+    <div class="row"><input id="wTotal" type="number" min="10" step="1" inputmode="numeric" value="150" aria-label="한 달 생활비(만원)" style="width:110px;font-family:var(--f-num)"> <span>만원</span><span class="hint" id="wCells" style="margin:0 0 0 6px"></span></div>
+    <div class="row" style="margin-top:16px">
+      <button class="primary" id="wStart">시작하기</button>
+      <button class="ghost" id="wCats">카테고리도 지금 정하기</button>
+      <button class="linkbtn" id="wLater" style="color:var(--muted)">예시 먼저 둘러볼게요</button>
+    </div>
+    <div class="toast" id="wMsg" role="status"></div>
+  </section>
 
   <section class="sheet" id="settings" hidden>
     <h2>예산·카테고리 설정</h2>
@@ -725,7 +751,26 @@ $("loadBk").onclick=()=>{try{const raw=$("bk").value.trim().replace(/^(한칸한
     if(!n)throw 0;builtFor="";load();toast(`불러왔어요. (${n}개 항목)`,"bkMsg");$("settings").hidden=false;draft=clone(state.cfg);drawSet()}
   catch(e){toast("백업 글자를 읽지 못했어요. 처음부터 끝까지 빠짐없이 붙여넣었는지 확인해주세요.","bkMsg",true)}};
 
+/* 처음 쓰는 사람용 시작 화면 */
+let wMode="free";
+function wDraw(){$("wBudget").setAttribute("aria-checked",wMode==="budget");$("wFree").setAttribute("aria-checked",wMode==="free");
+  const t=Math.max(0,parseInt($("wTotal").value)||0);$("wCells").textContent=t?`→ ${t}칸 (1칸 1만원)`:""}
+$("wBudget").onclick=()=>{wMode="budget";wDraw()};$("wFree").onclick=()=>{wMode="free";wDraw()};$("wTotal").oninput=wDraw;
+function wApply(){
+  const t=parseInt($("wTotal").value)||0;if(t<10){toast("생활비를 10만원 이상으로 적어주세요.","wMsg",true);return null}
+  const cfg=clone(DEF);cfg.mode=wMode;cfg.total=t*10000;
+  /* 기본 카테고리 예산을 총액 비율에 맞춰 1만원 단위로 조정 */
+  const base=cfg.cats.reduce((a,c)=>a+c.b,0);let acc=0;
+  cfg.cats.forEach((c,i)=>{if(i<cfg.cats.length-1){c.b=Math.round(c.b/base*cfg.total/10000)*10000;acc+=c.b}else c.b=Math.max(0,cfg.total-acc)});
+  put(PFX+"cfg",cfg);put(PFX+"onboarded",1);
+  state=emptyState(clone(cfg));builtFor="";save();$("welcome").hidden=true;tool=state.cfg.cats[0].id;render();return cfg;
+}
+$("wStart").onclick=()=>{if(wApply())toast(wMode==="free"?`한 달 ${$("wTotal").value}만원으로 시작했어요. 쓴 만큼 칸을 칠해보세요.`:"카테고리 예산을 총액에 맞춰 나눠뒀어요. 설정에서 바꿀 수 있어요.")};
+$("wCats").onclick=()=>{if(wApply()){$("openSet").click()}};
+$("wLater").onclick=()=>{put(PFX+"onboarded",1);$("welcome").hidden=true};
+
 load();
+if(!get(PFX+"onboarded")&&!get(PFX+"cfg")&&!hasAny()){$("welcome").hidden=false;wDraw()}
 </script>
 
 <script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
