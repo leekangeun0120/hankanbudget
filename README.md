@@ -2,6 +2,6 @@
 
 한 달 생활비를 1칸 1만원, 반칸 5천원으로 나눠 나눠 카테고리 색으로 칠하는 회고용 가계부입니다.
 
-- 열기: https://leekangeun0120.github.io/colorbudget/
+- 열기: https://leekangeun0120.github.io/hankanbudget/
 - 폰 홈 화면에 추가하면 앱처럼 쓸 수 있어요.
 - 기록은 각자 브라우저에만 저장돼요.
