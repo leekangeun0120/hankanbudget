@@ -18,17 +18,17 @@
 /* 모눈종이 위 색연필: 격자가 주인공, 팔레트와 회고는 옆(모바일은 위)에 조용히 */
 :root{
   --paper:#f6f7f3; --sheet:#ffffff; --ink:#23272b; --muted:#6b7177; --line:#d9ddd6; --cell:#eef0ea;
-  --accent:#2f6f5e; --over:#c94a4a; --overbg:#fbecea; --up:#c94a4a; --down:#2f7f5e;
+  --accent:#2f6f5e; --over:#c94a4a; --overbg:#fbecea; --up:#c94a4a; --down:#2f7f5e; --evbg:#f1eefa; --evline:#b9acd9; --evink:#5b4a8f;
   --f-body:"Gowun Dodum",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#16191b; --sheet:#1e2224; --ink:#e8ebe6; --muted:#9aa19c; --line:#353b3d; --cell:#2a2f31;
-  --accent:#6cc2a8; --over:#ef7b7b; --overbg:#3a2526; --up:#ef7b7b; --down:#6cc2a8; color-scheme:dark;
+  --accent:#6cc2a8; --over:#ef7b7b; --overbg:#3a2526; --up:#ef7b7b; --down:#6cc2a8; --evbg:#26223a; --evline:#574d80; --evink:#b7a8ea; color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --paper:#16191b; --sheet:#1e2224; --ink:#e8ebe6; --muted:#9aa19c; --line:#353b3d; --cell:#2a2f31;
-  --accent:#6cc2a8; --over:#ef7b7b; --overbg:#3a2526; --up:#ef7b7b; --down:#6cc2a8; color-scheme:dark;
+  --accent:#6cc2a8; --over:#ef7b7b; --overbg:#3a2526; --up:#ef7b7b; --down:#6cc2a8; --evbg:#26223a; --evline:#574d80; --evink:#b7a8ea; color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -118,6 +118,17 @@ input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);bord
 details{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 summary{cursor:pointer;font-size:.88rem;color:var(--muted)}
 textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;margin:8px 0}
+.evzone{margin-top:8px;padding:10px;border-radius:8px;background:var(--evbg);border:1px dashed var(--evline)}
+.evzone .cell{background:var(--sheet)}
+.evzone .rowmark{margin-top:0;color:var(--evink)}
+.linkbtn.ev{color:var(--evink)}
+.total.ev{margin:4px 0 8px}.total.ev .big{font-size:1.4rem}
+.evsum{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:.82rem}
+.evsum span{display:inline-flex;align-items:center;gap:6px}
+.evsum i{width:10px;height:10px;border-radius:3px;background:var(--sw);display:inline-block}
+.evsum b{font-family:var(--f-num);font-weight:500}
+.evchk{display:inline-flex;align-items:center;gap:5px;font-size:.85rem;color:var(--muted);white-space:nowrap}
+.tag{font-size:.68rem;color:var(--evink);border:1px solid var(--evline);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px}
 #memo{flex:2 1 150px}#day{flex:1 1 130px;font-family:var(--f-num)}
 /* 지출 내역 */
 .logbox{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
@@ -192,7 +203,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
       <summary>구글 시트·엑셀 가계부에서 가져오기</summary>
       <p class="hint">가계부 시트에서 날짜·분류·내용·금액이 있는 줄들을 드래그해 복사(Ctrl+C)한 뒤 아래에 붙여넣으세요. 지금 보고 있는 달의 날짜만 가져오고, 이 달의 색칠은 가져온 내용으로 새로 채워요. 분류 이름이 내 카테고리와 같거나 비슷하면(꾸밈비→꾸밈) 그 색으로, 없으면 새 카테고리를 만들어요.</p>
       <textarea id="imp" aria-label="시트에서 복사한 내용" placeholder="2026. 10. 1	변동지출	식비	김밥	2,600"></textarea>
-      <label class="row" style="font-size:.85rem;gap:6px"><input type="checkbox" id="skipEvent" checked> '이벤트비'라고 적힌 지출은 빼기 (생활비가 아니라 이벤트비 통장에서 나간 돈)</label>
+      <label class="row" style="font-size:.85rem;gap:6px"><input type="checkbox" id="skipEvent" checked> '이벤트비'라고 적힌 지출은 생활비 칸 대신 이벤트비 칸판에 칠하기</label>
       <div class="row" style="margin-top:8px"><button class="ghost" id="doImp">가져오기</button></div>
       <div class="toast" id="impMsg" role="status"></div>
     </details>
@@ -222,6 +233,14 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
       </div>
       <p class="hint">칸을 한 번 누르면 반칸, 한 번 더 누르면 한 칸이 칠해져요. 반칸 두 개를 다른 색으로 칠할 수도 있어요.</p>
 
+      <button class="ghost openOver" id="openEv"></button>
+      <div class="evzone" id="evzone" hidden>
+        <div class="rowmark"><span>이벤트비 칸판 · 생활비와 따로 세요</span><button class="linkbtn ev" id="closeEv">닫기</button></div>
+        <div class="total ev" id="evTotal"></div>
+        <div class="grid" id="egrid"></div>
+        <div class="evsum" id="evSum"></div>
+      </div>
+
       <section class="logbox">
         <div class="loghead">
           <h2>지출 내역</h2>
@@ -244,6 +263,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
           <select id="cat" aria-label="카테고리"></select>
           <input id="memo" maxlength="30" placeholder="메모 (예: 올리브영)" aria-label="메모">
           <input id="day" type="date" aria-label="날짜">
+          <label class="evchk" for="isEv"><input type="checkbox" id="isEv"> 이벤트비</label>
           <button class="primary" type="submit">칠하기</button>
         </form>
         <p class="hint" id="pending"></p>
@@ -287,6 +307,8 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
 
 <script>
 const PALETTE=["#f0a046","#e5718c","#ae86d6","#56b285","#4f8ad9","#cdb44d","#d65c5c","#4fb7c4","#a06e4e","#7d93ad","#9da2a9","#e98bd0"];
+const EXTRA=["#e98bd0","#8bc34a","#ff8a65","#9575cd","#26a69a","#c0ca33","#5c6bc0","#8d6e63"];
+const freeColor=cats=>{const used=new Set(cats.map(c=>c.c.toLowerCase()));return PALETTE.concat(EXTRA).find(x=>!used.has(x))||EXTRA[cats.length%EXTRA.length]};
 const DEF={total:1500000,unit:10000,mode:"budget",cats:[
   ["식비",30],["카페·간식",10],["생활용품",15],["교통",10],["꾸밈",20],["건강",10],["문화·여가",15],["자기계발",15],["경조사·선물",15],["기타",10]
 ].map(([n,m],i)=>({id:i+1,n,b:m*10000,c:PALETTE[i]}))};
@@ -301,7 +323,7 @@ const fmtC=h=>(h%2?(h/2).toFixed(1):String(h/2));
 const fmtN=x=>Number.isInteger(x)?String(x):x.toFixed(1);
 
 let ym=(()=>{const d=new Date();return [d.getFullYear(),d.getMonth()+1]})();
-let state, history=[], tool=null, overOpen=false, draft=null;
+let state, history=[], tool=null, overOpen=false, evOpen=false, draft=null;
 const mkey=(y,m)=>`${PFX}${y}-${String(m).padStart(2,"0")}`;
 const key=()=>mkey(ym[0],ym[1]);
 const prevYm=()=>ym[1]===1?[ym[0]-1,12]:[ym[0],ym[1]-1];
@@ -311,7 +333,15 @@ const MAINn=()=>Math.ceil(state.cfg.total/state.cfg.unit);
 const Nn=()=>MAINn()+OVER;
 const cat=id=>state.cfg.cats.find(c=>c.id===id);
 
-function emptyState(cfg){const main=Math.ceil(cfg.total/cfg.unit);return {cfg,cells:Array.from({length:main+OVER},()=>[-1,-1]),pending:{},sample:false,log:[],ns:[]}}
+function emptyState(cfg){const main=Math.ceil(cfg.total/cfg.unit);return {cfg,cells:Array.from({length:main+OVER},()=>[-1,-1]),pending:{},sample:false,log:[],ns:[],ev:[],epend:{}}}
+/* 이벤트비: 생활비 칸과 따로, 반칸 단위 목록(ev)과 잔돈(epend)으로 관리 */
+function addEvent(k,v){const half=state.cfg.unit/2;state.epend[k]=(state.epend[k]||0)+v;let n=0;
+  while(state.epend[k]>=half){state.ev.push(k);state.epend[k]-=half;n++}if(!state.epend[k])delete state.epend[k];return n}
+function removeEvent(k,v){const half=state.cfg.unit/2;const cnt=state.ev.filter(x=>x===k).length;
+  const w=Math.max(0,cnt*half+(state.epend[k]||0)-v),target=Math.floor(w/half);let rm=cnt-target;
+  for(let i=state.ev.length-1;i>=0&&rm>0;i--)if(state.ev[i]===k){state.ev.splice(i,1);rm--}
+  const p=w-target*half;if(p)state.epend[k]=p;else delete state.epend[k]}
+const evWon=()=>state.ev.length*state.cfg.unit/2+Object.values(state.epend).reduce((a,b)=>a+b,0);
 const pad=n=>String(n).padStart(2,"0");
 const daysIn=()=>new Date(ym[0],ym[1],0).getDate();
 const todayStr=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
@@ -331,12 +361,12 @@ function sample(){
 }
 function load(){
   const s=get(key());
-  if(s&&s.cfg&&Array.isArray(s.cells)){state=s;state.pending=state.pending||{};state.log=state.log||[];state.ns=state.ns||[]}
+  if(s&&s.cfg&&Array.isArray(s.cells)){state=s;state.pending=state.pending||{};state.log=state.log||[];state.ns=state.ns||[];state.ev=state.ev||[];state.epend=state.epend||{}}
   else{const now=new Date();const cur=ym[0]===now.getFullYear()&&ym[1]===now.getMonth()+1;
     state=(cur&&!hasAny()&&!get(PFX+"cfg"))?sample():emptyState(defCfg())}
   if(state.cells.length!==Nn())resize(Nn());
   tool=state.cfg.cats[0]?state.cfg.cats[0].id:ERASER;
-  history=[];overOpen=false;$("settings").hidden=true;$("cardBox").hidden=true;
+  history=[];overOpen=false;evOpen=false;$("settings").hidden=true;$("cardBox").hidden=true;
   const first=`${ym[0]}-${pad(ym[1])}-01`,last=`${ym[0]}-${pad(ym[1])}-${pad(daysIn())}`;
   $("day").min=first;$("day").max=last;$("day").value=isCurMonth()?todayStr():first;
   render();
@@ -363,7 +393,7 @@ function buildGrid(){
     (i<main?g:o).appendChild(b);
   }
 }
-document.addEventListener("click",e=>{const b=e.target.closest(".cell");if(b)paint(+b.dataset.i)});
+document.addEventListener("click",e=>{const b=e.target.closest(".cell");if(!b)return;if(b.dataset.e!==undefined){toast("이벤트비는 '금액으로 칠하기'에서 이벤트비에 체크하고 적어요.");return}paint(+b.dataset.i)});
 function paint(i){
   if(state.sorted){toast("색깔별로 모아보는 중에는 칸을 칠할 수 없어요. '날짜순으로 되돌리기'를 누른 뒤 칠해주세요.","toast",true);return}
   let c=state.cells[i];
@@ -406,6 +436,7 @@ function render(){
     b.setAttribute("aria-label",`${+b.dataset.i+1}번 칸: `+c.map(k=>k>=0?(cat(k)?cat(k).n:"삭제됨"):"빈 반칸").join(", "))});
   const overUsed=state.cells.slice(main).some(c=>c[0]>=0||c[1]>=0);if(overUsed)overOpen=true;
   $("overzone").hidden=!overOpen;$("openOver").hidden=overOpen;$("closeOver").hidden=overUsed;
+  renderEv();
 
   const h=counts(),tot=allHalves(state.cells).length,pend=Object.values(state.pending).reduce((a,b)=>a+b,0);
   const t=$("total");t.classList.toggle("over",tot>main*2);
@@ -434,6 +465,21 @@ function render(){
   renderLog();renderCal();
   $("pending").textContent=p.length?`모아둔 잔돈: ${p.join(" · ")}`:`${won(u/2)}원이 안 되는 돈은 모아뒀다가 다 차면 반칸을 칠해요.`;
 }
+function renderEv(){
+  const ev=state.sorted?state.cfg.cats.flatMap(c=>state.ev.filter(k=>k===c.id)).concat(state.ev.filter(k=>!cat(k))):state.ev;
+  const has=ev.length||Object.keys(state.epend).length;const tot=evWon();
+  $("openEv").textContent=has?`이벤트비 칸판 열기 · ${fmtC(state.ev.length)}칸 ${won(tot)}원`:"이벤트비 칸판 열기";
+  $("evzone").hidden=!evOpen;$("openEv").hidden=evOpen;
+  if(!evOpen)return;
+  const n=Math.max(10,Math.ceil(Math.ceil(ev.length/2)/10)*10),g=$("egrid");
+  if(g.children.length!==n){g.innerHTML="";for(let i=0;i<n;i++){const b=document.createElement("button");b.className="cell";b.dataset.e=i;b.innerHTML='<span class="h1"></span><span class="h2"></span>';g.appendChild(b)}}
+  const col=k=>k===undefined?"transparent":(cat(k)?cat(k).c:"#999");
+  [...g.children].forEach((b,i)=>{b.children[0].style.setProperty("--fill",col(ev[i*2]));b.children[1].style.setProperty("--fill",col(ev[i*2+1]))});
+  $("evTotal").innerHTML=`<span class="big">${fmtC(state.ev.length)}<small> 칸</small></span><span class="won">약 ${won(tot)}원</span>`;
+  const by={};state.log.filter(e=>e.e).forEach(e=>by[e.k]=(by[e.k]||0)+e.v);
+  const keys=Object.keys(by).sort((a,b)=>by[b]-by[a]);
+  $("evSum").innerHTML=keys.length?keys.map(k=>{const c=cat(+k);return `<span style="--sw:${c?c.c:"#999"}"><i></i>${c?c.n:"삭제됨"} <b>${won(by[k])}</b></span>`}).join(""):`<span style="color:var(--muted)">'금액으로 칠하기'에서 이벤트비에 체크하고 적으면 여기에 칠해져요. 생활비 예산에는 들어가지 않아요.</span>`;
+}
 function renderLog(){
   const f=$("logFilter"),fv=f.value||"all";
   f.innerHTML=`<option value="all">전체</option>`+state.cfg.cats.map(c=>`<option value="${c.id}"></option>`).join("");
@@ -448,8 +494,8 @@ function renderLog(){
     sum+=e.v;head.lastElementChild.textContent=won(sum)+"원";
     const c=cat(e.k);const r=document.createElement("div");r.className="lrow";r.style.setProperty("--sw",c?c.c:"#999");
     r.innerHTML=`<span class="dot"></span><span class="t"><span></span><small></small></span><span class="a">${won(e.v)}</span><button aria-label="이 내역 지우기">×</button>`;
-    r.querySelector(".t span").textContent=e.m||(c?c.n:"삭제된 카테고리");r.querySelector(".t small").textContent=e.m&&c?c.n:"";
-    r.querySelector("button").onclick=()=>{snap();state.log=state.log.filter(x=>x.id!==e.id);if(cat(e.k))removeAmount(e.k,e.v);save();render();toast(`${won(e.v)}원 내역을 지우고 칸도 지웠어요. 되돌리기로 살릴 수 있어요.`)};
+    r.querySelector(".t span").textContent=e.m||(c?c.n:"삭제된 카테고리");r.querySelector(".t small").textContent=e.m&&c?c.n:"";if(e.e)r.querySelector(".t").insertAdjacentHTML("beforeend",'<span class="tag">이벤트비</span>');
+    r.querySelector("button").onclick=()=>{snap();state.log=state.log.filter(x=>x.id!==e.id);if(e.e)removeEvent(e.k,e.v);else if(cat(e.k))removeAmount(e.k,e.v);save();render();toast(`${won(e.v)}원 내역을 지우고 칸도 지웠어요. 되돌리기로 살릴 수 있어요.`)};
     box.appendChild(r)});
 }
 function renderCal(){
@@ -476,6 +522,9 @@ $("addForm").addEventListener("submit",e=>{e.preventDefault();
   if(!day.startsWith(`${ym[0]}-${pad(ym[1])}`)){toast("이 달에 속한 날짜를 골라주세요. 다른 달은 위의 ‹ › 로 옮겨서 적어요.","toast",true);return}
   snap();touch();
   const d0=+day.slice(8);state.ns=state.ns.filter(x=>x!==d0);
+  if($("isEv").checked){state.log.push({id:Date.now(),d:day,k,v,m:$("memo").value.trim(),e:true});$("memo").value="";
+    const n=addEvent(k,v);evOpen=true;save();render();$("amt").value="";
+    toast(`이벤트비로 ${cat(k).n} ${won(v)}원 → 반칸 ${n}개 칠했어요.`);return}
   state.log.push({id:Date.now(),d:day,k,v,m:$("memo").value.trim()});$("memo").value="";
   state.pending[k]=(state.pending[k]||0)+v;const n=Math.floor(state.pending[k]/half);
   const before=state.cells.slice(MAINn()).some(c=>c[0]>=0||c[1]>=0);
@@ -494,12 +543,12 @@ function sortedCells(){const h=counts();const l=[];state.cfg.cats.forEach(c=>{fo
 const viewCells=()=>state.sorted?sortedCells():state.cells;
 /* 지출 내역을 날짜순으로 다시 칠해서 원래 순서를 복원 (예전 버전에서 모으기로 섞인 칸도 복구) */
 function chronoCells(){
-  if(!state.log.length)return null;
+  if(!state.log.some(e=>!e.e))return null;
   const half=state.cfg.unit/2,cells=state.cells.map(()=>[-1,-1]),pend={};let pos=0;
   const put=k=>{if(pos>=cells.length*2)return false;cells[pos>>1][pos&1]=k;pos++;return true};
   const r={};
   state.log.slice().sort((a,b)=>a.d.localeCompare(b.d)||a.id-b.id).forEach(e=>{
-    if(!cat(e.k))return;pend[e.k]=(pend[e.k]||0)+e.v;
+    if(!cat(e.k)||e.e)return;pend[e.k]=(pend[e.k]||0)+e.v;
     while(pend[e.k]>=half){if(!put(e.k))break;pend[e.k]-=half;r[e.k]=(r[e.k]||0)+1}});
   const h=counts();
   for(const k in r)if(r[k]>(h[k]||0))return null; /* 내역보다 칸을 손으로 더 지운 경우는 복원하지 않음 */
@@ -517,6 +566,8 @@ $("no").onclick=()=>{$("actions").hidden=false;$("confirm").hidden=true};
 $("yes").onclick=()=>{snap();state=emptyState(clone(state.sample?defCfg():state.cfg));builtFor="";save();render();$("no").onclick()};
 $("startFresh").onclick=()=>{snap();state=emptyState(defCfg());builtFor="";save();render()};
 $("openOver").onclick=()=>{overOpen=true;render()};
+$("openEv").onclick=()=>{evOpen=true;render()};
+$("closeEv").onclick=()=>{evOpen=false;render()};
 $("closeOver").onclick=()=>{overOpen=false;render()};
 function setMode(m){state.cfg.mode=m;const d=defCfg();d.mode=m;put(PFX+"cfg",d);save();render();if(!$("settings").hidden)drawSet()}
 $("mBudget").onclick=()=>setMode("budget");$("mFree").onclick=()=>setMode("free");
@@ -553,7 +604,7 @@ function sumLine(){
 $("sTotal").oninput=e=>{draft.total=Math.max(1,parseFloat(e.target.value)||0)*10000;sumLine()};
 $("sUnit").onchange=e=>{draft.unit=+e.target.value;sumLine()};
 $("addCat").onclick=()=>{const id=Math.max(0,...draft.cats.map(c=>c.id),...state.cfg.cats.map(c=>c.id))+1;
-  draft.cats.push({id,n:"새 카테고리",b:0,c:PALETTE[draft.cats.length%PALETTE.length]});drawSet();$("cn"+id).focus();$("cn"+id).select()};
+  draft.cats.push({id,n:"새 카테고리",b:0,c:freeColor(draft.cats)});drawSet();$("cn"+id).focus();$("cn"+id).select()};
 $("saveSet").onclick=()=>{
   draft.cats.forEach(c=>c.n=c.n.trim());
   if(draft.cats.some(c=>!c.n)){toast("이름이 빈 카테고리가 있어요.","setMsg",true);return}
@@ -610,7 +661,7 @@ async function drawCard(){
   const foot=gy+Math.max(rows*(cs+g)+(overUsed?24:0),legendH)+70;
   x.fillStyle="#d9ddd6";x.fillRect(P,foot-46,W-2*P,2);
   x.fillStyle="#23272b";x.font=`28px ${F}`;
-  const left=main*2-tot;x.fillStyle="#6b7177";x.font=`22px ${F}`;x.textAlign="right";x.fillText("한칸한칸",W-P,foot);x.textAlign="left";x.fillStyle="#23272b";x.font=`28px ${F}`;x.fillText(`무지출 ${state.ns.length}일 · `+(left>=0?`예산 ${fmtC(left)}칸 남김`:`예산 ${fmtC(-left)}칸 초과`),P,foot);
+  const left=main*2-tot;x.fillStyle="#6b7177";x.font=`22px ${F}`;x.textAlign="right";x.fillText("한칸한칸",W-P,foot);x.textAlign="left";x.fillStyle="#23272b";x.font=`28px ${F}`;x.fillText(`무지출 ${state.ns.length}일 · `+(left>=0?`예산 ${fmtC(left)}칸 남김`:`예산 ${fmtC(-left)}칸 초과`)+(state.ev.length?` · 이벤트비 ${fmtC(state.ev.length)}칸`:""),P,foot);
   return cv;
 }
 $("makeCard").onclick=async()=>{const cv=await drawCard();$("cardImg").src=cv.toDataURL("image/png");$("cardBox").hidden=false;$("cardImg")._cv=cv};
@@ -647,19 +698,21 @@ $("doImp").onclick=()=>{
   const rows=parseSheet($("imp").value);
   if(!rows.length){toast("날짜와 금액이 있는 줄을 찾지 못했어요. 시트에서 날짜 칸부터 금액 칸까지 함께 복사해주세요.","impMsg",true);return}
   let other=0,typ=0,ev=0;const take=[];
-  rows.forEach(r=>{if(r.y!==ym[0]||r.mo!==ym[1]){other++;return}if(r.type&&r.type!=="변동지출"){typ++;return}if(r.event&&$("skipEvent").checked){ev++;return}take.push(r)});
-  if(!take.length){toast(`가져올 지출이 없어요. (다른 달 ${other}줄, 수입·고정·저축 ${typ}줄, 이벤트비 ${ev}줄 제외)`,"impMsg",true);return}
+  rows.forEach(r=>{if(r.y!==ym[0]||r.mo!==ym[1]){other++;return}if(r.type&&r.type!=="변동지출"){typ++;return}if(r.event&&$("skipEvent").checked){ev++;r.ev=true}take.push(r)});
+  if(!take.length){toast(`가져올 지출이 없어요. (다른 달 ${other}줄, 수입·고정·저축 ${typ}줄 제외)`,"impMsg",true);return}
   snap();
   const cfg=clone(state.cfg);const made=[];
   take.forEach(r=>{let c=matchCat(cfg.cats,r.cat);
-    if(!c){const id=Math.max(0,...cfg.cats.map(x=>x.id))+1;c={id,n:r.cat.slice(0,10),b:0,c:PALETTE[cfg.cats.length%PALETTE.length]};cfg.cats.push(c);made.push(c.n)}
+    if(!c){const id=Math.max(0,...cfg.cats.map(x=>x.id))+1;c={id,n:r.cat.slice(0,10),b:0,c:freeColor(cfg.cats)};cfg.cats.push(c);made.push(c.n)}
     r.k=c.id});
   state=emptyState(cfg);state.ns=[];
-  take.forEach((r,i)=>{const k=r.k;state.log.push({id:Date.now()+i,d:`${r.y}-${pad(r.mo)}-${pad(r.d)}`,k,v:r.v,m:r.memo});
+  take.forEach((r,i)=>{const k=r.k;const ent={id:Date.now()+i,d:`${r.y}-${pad(r.mo)}-${pad(r.d)}`,k,v:r.v,m:r.memo};
+    if(r.ev){ent.e=true;state.log.push(ent);addEvent(k,r.v);return}
+    state.log.push(ent);
     state.pending[k]=(state.pending[k]||0)+r.v;const half=cfg.unit/2;const n=Math.floor(state.pending[k]/half);const done=fillNext(k,n);state.pending[k]-=done*half;if(!state.pending[k])delete state.pending[k]});
   put(PFX+"cfg",clone(cfg));builtFor="";save();render();draft=clone(state.cfg);drawSet();$("imp").value="";
-  const sum=take.reduce((a,r)=>a+r.v,0);
-  toast(`${take.length}건, ${won(sum)}원을 가져왔어요.`+(made.length?` 새 카테고리: ${made.join(", ")}.`:"")+` (빠진 줄: 다른 달 ${other}, 수입·고정·저축 ${typ}, 이벤트비 ${ev})`,"impMsg");
+  const sum=take.filter(r=>!r.ev).reduce((a,r)=>a+r.v,0),esum=take.filter(r=>r.ev).reduce((a,r)=>a+r.v,0);if(ev)evOpen=true;render();
+  toast(`생활비 ${take.length-ev}건 ${won(sum)}원`+(ev?`, 이벤트비 ${ev}건 ${won(esum)}원`:"")+`을 가져왔어요.`+(made.length?` 새 카테고리: ${made.join(", ")}.`:"")+` (빠진 줄: 다른 달 ${other}, 수입·고정·저축 ${typ})`,"impMsg");
 };
 
 $("copyBk").onclick=()=>{const data={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PFX))data[k]=localStorage.getItem(k)}}catch(e){}
