@@ -1,6 +1,6 @@
 {
-  "name": "색칠 가계부",
-  "short_name": "색칠가계부",
+  "name": "한칸한칸",
+  "short_name": "한칸한칸",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

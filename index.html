@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2f6f5e">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="색칠 가계부">
+<meta name="apple-mobile-web-app-title" content="한칸한칸">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 </head>
 <body>
-<title>색칠 가계부</title>
+<title>한칸한칸</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 /* 모눈종이 위 색연필: 격자가 주인공, 팔레트와 회고는 옆(모바일은 위)에 조용히 */
@@ -150,7 +150,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
 <div class="wrap">
   <header>
     <div>
-      <h1>색칠 가계부</h1>
+      <h1>한칸한칸</h1>
       <div class="sub" id="sub"></div>
     </div>
     <div class="hright">
@@ -262,7 +262,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:.75rem;ma
         <p class="hint" id="cmpNote"></p>
         <div class="row" style="margin-top:12px"><button class="ghost" id="makeCard">회고 카드 이미지 만들기</button></div>
         <div id="cardBox" hidden>
-          <img id="cardImg" alt="이번 달 색칠 가계부 회고 카드">
+          <img id="cardImg" alt="이번 달 한칸한칸 회고 카드">
           <div class="row"><button class="ghost" id="copyCard">이미지 복사</button><button class="ghost" id="closeCard">닫기</button></div>
           <p class="hint">폰에서는 이미지를 길게 눌러 사진첩에 저장하세요.</p>
           <div class="toast" id="cardMsg" role="status"></div>
@@ -590,7 +590,7 @@ async function drawCard(){
   const cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");
   const F="'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif",M="'IBM Plex Mono',monospace";
   x.fillStyle="#f6f7f3";x.fillRect(0,0,W,H);
-  x.fillStyle="#23272b";x.font=`64px ${F}`;x.fillText(`${ym[1]}월 색칠 가계부`,P,130);
+  x.fillStyle="#23272b";x.font=`64px ${F}`;x.fillText(`${ym[1]}월 한칸한칸`,P,130);
   x.fillStyle="#6b7177";x.font=`28px ${F}`;x.fillText(`${ym[0]}년 · 1칸 ${won(u)}원 · 예산 ${man(cfg.total)}원`,P,180);
   const col=k=>{const c=cat(k);return c?c.c:"#999"};const vcs=viewCells();
   for(let i=0;i<n;i++){const r=Math.floor(i/10),c=i%10;const ox=gx+c*(cs+g),oy=gy+r*(cs+g)+(i>=main?24:0);
@@ -610,7 +610,7 @@ async function drawCard(){
   const foot=gy+Math.max(rows*(cs+g)+(overUsed?24:0),legendH)+70;
   x.fillStyle="#d9ddd6";x.fillRect(P,foot-46,W-2*P,2);
   x.fillStyle="#23272b";x.font=`28px ${F}`;
-  const left=main*2-tot;x.fillText(`무지출 ${state.ns.length}일 · `+(left>=0?`예산 ${fmtC(left)}칸 남김`:`예산 ${fmtC(-left)}칸 초과`),P,foot);
+  const left=main*2-tot;x.fillStyle="#6b7177";x.font=`22px ${F}`;x.textAlign="right";x.fillText("한칸한칸",W-P,foot);x.textAlign="left";x.fillStyle="#23272b";x.font=`28px ${F}`;x.fillText(`무지출 ${state.ns.length}일 · `+(left>=0?`예산 ${fmtC(left)}칸 남김`:`예산 ${fmtC(-left)}칸 초과`),P,foot);
   return cv;
 }
 $("makeCard").onclick=async()=>{const cv=await drawCard();$("cardImg").src=cv.toDataURL("image/png");$("cardBox").hidden=false;$("cardImg")._cv=cv};
@@ -664,10 +664,10 @@ $("doImp").onclick=()=>{
 
 $("copyBk").onclick=()=>{const data={};try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(PFX))data[k]=localStorage.getItem(k)}}catch(e){}
   if(!Object.keys(data).length){toast("아직 저장된 기록이 없어요.","bkMsg",true);return}
-  const txt="색칠가계부백업:"+btoa(unescape(encodeURIComponent(JSON.stringify(data))));$("bk").value=txt;
+  const txt="한칸한칸백업:"+btoa(unescape(encodeURIComponent(JSON.stringify(data))));$("bk").value=txt;
   const ok=()=>toast("복사했어요. 메모장이나 카톡에 붙여두세요.","bkMsg"),fail=()=>{$("bk").focus();$("bk").select();toast("자동 복사가 안 돼서 글자를 선택해뒀어요. 직접 복사해주세요.","bkMsg",true)};
   try{navigator.clipboard.writeText(txt).then(ok,fail)}catch(e){fail()}};
-$("loadBk").onclick=()=>{try{const raw=$("bk").value.trim().replace(/^색칠가계부백업:/,"");const data=JSON.parse(decodeURIComponent(escape(atob(raw))));
+$("loadBk").onclick=()=>{try{const raw=$("bk").value.trim().replace(/^(한칸한칸|색칠가계부)백업:/,"");const data=JSON.parse(decodeURIComponent(escape(atob(raw))));
     let n=0;for(const k in data)if(k.startsWith(PFX)){localStorage.setItem(k,data[k]);n++}
     if(!n)throw 0;builtFor="";load();toast(`불러왔어요. (${n}개 항목)`,"bkMsg");$("settings").hidden=false;draft=clone(state.cfg);drawSet()}
   catch(e){toast("백업 글자를 읽지 못했어요. 처음부터 끝까지 빠짐없이 붙여넣었는지 확인해주세요.","bkMsg",true)}};
