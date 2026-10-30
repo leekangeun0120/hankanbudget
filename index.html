@@ -521,7 +521,9 @@ const prevYm=()=>ym[1]===1?[ym[0]-1,12]:[ym[0],ym[1]-1];
 const nextYm=()=>ym[1]===12?[ym[0]+1,1]:[ym[0],ym[1]+1];
 const defCfg=()=>get(PFX+"cfg")||clone(DEF);
 const MAINn=()=>Math.ceil(state.cfg.total/state.cfg.unit);
-const Nn=()=>MAINn()+OVER;
+/* 비상금 칸은 기본 30칸, 그보다 더 쓰면 10칸씩 늘어남 */
+const Nn=()=>Math.max(MAINn()+OVER,state.cells?state.cells.length:0);
+const capFor=n=>Math.max(MAINn()+OVER,Math.ceil(Math.ceil(n/2)/10)*10);
 const cat=id=>state.cfg.cats.find(c=>c.id===id);
 
 function emptyState(cfg){const main=Math.ceil(cfg.total/cfg.unit);return {cfg,cells:Array.from({length:main+OVER},()=>[-1,-1]),pending:{},sample:false,log:[],ns:[],ev:[],epend:{}}}
@@ -543,7 +545,7 @@ function rerouteAll(oldRoute){
   const old=replay(state.log.filter(e=>!oldRoute(e))).cnt,h=counts(),manual=[];
   for(const k in h){const ex=h[k]-(old[k]||0);for(let i=0;i<ex;i++)manual.push(+k)}
   const m=replay(state.log.filter(e=>!routeSep(e))),v=replay(state.log.filter(routeSep));
-  const cells=state.cells.map(()=>[-1,-1]);m.halves.concat(manual).slice(0,cells.length*2).forEach((k,i)=>{cells[i>>1][i&1]=k});
+  const all=m.halves.concat(manual),cells=Array.from({length:capFor(all.length)},()=>[-1,-1]);all.forEach((k,i)=>{cells[i>>1][i&1]=k});
   state.cells=cells;state.pending=m.pend;state.ev=v.halves;state.epend=v.pend;
 }
 const evWon=()=>state.ev.length*state.cfg.unit/2+Object.values(state.epend).reduce((a,b)=>a+b,0);
@@ -619,7 +621,7 @@ function removeAmount(k,v){
     if(c[1]===k){c[1]=-1;rm--}if(rm>0&&c[0]===k){c[0]=c[1];c[1]=-1;rm--}}
   const p=w-target*half;if(p)state.pending[k]=p;else delete state.pending[k];
 }
-function fillNext(k,n){let d=0;for(let i=0;i<state.cells.length&&d<n;i++){const c=state.cells[i];if(c[0]<0){c[0]=k;d++;i--;continue}if(c[1]<0){c[1]=k;d++}}return d}
+function fillNext(k,n){let d=0;for(let i=0;d<n;i++){if(i>=state.cells.length)for(let j=0;j<10;j++)state.cells.push([-1,-1]);const c=state.cells[i];if(c[0]<0){c[0]=k;d++;i--;continue}if(c[1]<0){c[1]=k;d++}}return d}
 
 /* 지난달 비교: 이름이 같은 카테고리끼리 금액으로 비교 */
 function prevSpend(){
@@ -693,7 +695,7 @@ function rebuildWith(mutate){
   for(const k in h){const ex=h[k]-(old[k]||0);for(let i=0;i<ex;i++)manual.push(+k)}
   mutate();
   const m=replay(state.log.filter(e=>!routeSep(e))),v=replay(state.log.filter(routeSep));
-  const cells=state.cells.map(()=>[-1,-1]);m.halves.concat(manual).slice(0,cells.length*2).forEach((k,i)=>{cells[i>>1][i&1]=k});
+  const all=m.halves.concat(manual),cells=Array.from({length:capFor(all.length)},()=>[-1,-1]);all.forEach((k,i)=>{cells[i>>1][i&1]=k});
   state.cells=cells;state.pending=m.pend;state.ev=v.halves;state.epend=v.pend;
 }
 let editingId=null;
