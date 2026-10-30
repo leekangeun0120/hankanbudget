@@ -182,6 +182,7 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
 .fshead .label{margin:0}
 .xclose{display:none}
 .fab,.tabbar,.scrim{display:none}
+.filebtn{display:inline-flex;align-items:center;cursor:pointer;font-size:.9rem}
 .filemap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:6px 10px;align-items:center;font-size:.86rem}
 .filemap span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .filemap small{color:var(--muted);font-family:var(--f-num)}
@@ -379,7 +380,7 @@ body.half-vert .mcell .h1{clip-path:polygon(0 0,50% 0,50% 100%,0 100%)}body.half
       <p class="hint">기록은 지금 쓰는 브라우저에만 저장돼요. 백업 글자를 복사해 메모장이나 카톡 나와의 채팅에 붙여두면, 다른 기기에서 붙여넣어 그대로 불러올 수 있어요.</p>
       <div class="row" style="margin-top:8px"><button class="ghost" id="copyBk">백업 글자 복사</button></div>
       <textarea id="bk" aria-label="백업 글자" placeholder="여기에 백업 글자를 붙여넣고 '불러오기'를 누르세요"></textarea>
-      <div class="row"><button class="ghost" id="loadBk">불러오기</button></div>
+      <div class="row"><button class="ghost" id="loadBk">불러오기</button><label class="ghost filebtn" for="bkFile">백업 파일(.txt) 골라서 불러오기</label><input type="file" id="bkFile" accept=".txt,text/plain" hidden></div>
       <div class="toast" id="bkMsg" role="status"></div>
     </details>
   </section>
@@ -1156,6 +1157,7 @@ $("bkNow").onclick=()=>{const txt=backupText();if(!txt)return;
   const fail=()=>{$("openSet").click();const d=document.querySelectorAll("#settings details")[1];d.open=true;$("bk").value=txt;markBackup();setTimeout(()=>{$("bk").focus();$("bk").select()},150);toast("자동 복사가 안 돼서 글자를 선택해뒀어요. 직접 복사해 카톡에 붙여두세요.","bkMsg",true)};
   try{navigator.clipboard.writeText(txt).then(ok,fail)}catch(e){fail()}};
 $("bkLater").onclick=()=>{const d=new Date();d.setDate(d.getDate()+3);put(PFX+"bkSnooze",`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);$("bkNag").hidden=true};
+$("bkFile").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{$("bk").value=(await f.text()).trim();$("loadBk").click()}catch(_){toast("파일을 읽지 못했어요. 한칸한칸 백업 .txt 파일인지 확인해주세요.","bkMsg",true)}e.target.value=""};
 $("loadBk").onclick=()=>{try{const raw=$("bk").value.trim().replace(/^(한칸한칸|색칠가계부)백업:/,"");const data=JSON.parse(decodeURIComponent(escape(atob(raw))));
     let n=0;for(const k in data)if(k.startsWith(PFX)){localStorage.setItem(k,data[k]);n++}
     if(!n)throw 0;builtFor="";load();toast(`불러왔어요. (${n}개 항목)`,"bkMsg");$("settings").hidden=false;draft=clone(state.cfg);drawSet()}
