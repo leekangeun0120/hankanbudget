@@ -182,6 +182,18 @@ body.half-vert .cell .h2{clip-path:polygon(49% 0,100% 0,100% 100%,49% 100%)}
 .fshead .label{margin:0}
 .xclose{display:none}
 .fab,.tabbar,.scrim{display:none}
+.filemap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:6px 10px;align-items:center;font-size:.86rem}
+.filemap span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.filemap small{color:var(--muted);font-family:var(--f-num)}
+.filerows{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.frow{display:grid;grid-template-columns:22px 44px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line);font-size:.84rem}
+.frow:last-child{border-bottom:0}
+.frow.off{opacity:.45}
+.frow .fd{font-family:var(--f-num);color:var(--muted);font-size:.78rem}
+.frow .fm{min-width:0}.frow .fm div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.frow .fm small{color:var(--muted)}
+.frow .fa{font-family:var(--f-num);text-align:right}
+.frow label{font-size:.72rem;color:var(--evink);display:flex;gap:3px;align-items:center;justify-content:flex-end}
 .addform{display:flex;flex-direction:column;gap:8px}
 .addform #amt{flex:1 1 120px}.addform #memo{flex:2 1 150px}
 .memohint{font-size:.78rem;color:var(--accent);min-height:0}
@@ -340,6 +352,20 @@ body.half-vert .mcell .h1{clip-path:polygon(0 0,50% 0,50% 100%,0 100%)}body.half
     </div>
     <div class="toast" id="setMsg" role="status"></div>
     <p class="hint">저장하면 이번 달과 앞으로 새로 여는 달에 적용돼요. 지난 달 기록은 그때 설정 그대로 남아요.</p>
+    <details id="fileBox">
+      <summary>가계부 앱 파일(.xlsx·.csv)로 추가하기</summary>
+      <p class="hint">편한가계부 같은 가계부 앱에서 내보낸 파일을 올리면, 고른 날짜부터의 지출만 <b>지금 기록에 덧붙여요.</b> 이미 적은 내역은 지우지 않고, 날짜·금액·내용이 똑같은 줄은 건너뛰어요. 수입은 빼요.</p>
+      <div class="row" style="margin-top:8px"><input type="file" id="fileIn" accept=".xlsx,.xls,.csv" aria-label="가계부 파일"></div>
+      <div id="fileStep" hidden>
+        <div class="row" style="margin-top:10px"><label for="fileFrom" style="font-size:.85rem">이 날짜부터</label><input type="date" id="fileFrom"><span class="hint" id="fileFromHint" style="margin:0"></span></div>
+        <p class="label" style="margin-top:12px">분류 맞추기 <span style="letter-spacing:0">(한 번 맞추면 다음에도 기억해요)</span></p>
+        <div id="fileMap" class="filemap"></div>
+        <p class="label" style="margin-top:12px">들어갈 지출 <span id="fileCount" style="letter-spacing:0"></span></p>
+        <div id="fileRows" class="filerows"></div>
+        <div class="row" style="margin-top:10px"><button class="primary" id="fileAdd">추가하기</button><button class="ghost" id="fileCancel">취소</button></div>
+      </div>
+      <div class="toast" id="fileMsg" role="status"></div>
+    </details>
     <details id="impBox">
       <summary>구글 시트·엑셀 가계부에서 가져오기</summary>
       <p class="hint">가계부 시트에서 날짜·분류·내용·금액이 있는 줄들을 드래그해 복사(Ctrl+C)한 뒤 아래에 붙여넣으세요. 지금 보고 있는 달의 날짜만 가져오고, 이 달의 색칠은 가져온 내용으로 새로 채워요. 분류 이름이 내 카테고리와 같거나 비슷하면(꾸밈비→꾸밈) 그 색으로, 없으면 새 카테고리를 만들어요.</p>
@@ -1007,7 +1033,7 @@ $("copyCard").onclick=()=>{const cv=$("cardImg")._cv;if(!cv)return;
 
 /* 시트 붙여넣기 가져오기 */
 const SKIP_TYPES=["수입","고정지출","저축/투자","저축","투자"];
-const ALIAS={"꾸밈비":"꾸밈","교통/차량":"교통","교통비":"교통","자기개발":"자기계발","기타비":"기타","문화":"문화생활","선물":"선물/경조"};
+const ALIAS={"꾸밈비":"꾸밈","교통/차량":"교통","교통비":"교통","자기개발":"자기계발","기타비":"기타","문화":"문화생활","선물":"선물/경조","패션/미용":"꾸밈","패션":"꾸밈","미용":"꾸밈","교육":"자기계발","경조사/회비":"선물/경조","경조사":"선물/경조","외식":"식비"};
 function matchCat(cats,name){
   const n=name.trim();if(!n)return null;
   const tries=[n,ALIAS[n],n.replace(/비$/,""),n.split("/")[0]].filter(Boolean);
@@ -1029,6 +1055,74 @@ function parseSheet(text){
   });
   return out;
 }
+/* ===== 가계부 앱 파일로 덧붙이기 ===== */
+const SKIP_DEFAULT=["주거/통신","보험","저축","월급","상여","금융소득","이체","카드대금"];
+/* 분류 이름에서 이모지 등을 빼고 한글·영문·숫자만 남김 (일부 파일은 이모지가 깨진 한자로 읽혀서 같이 지움) */
+const cleanCat=t=>String(t||"").replace(/[^\p{Script=Hangul}A-Za-z0-9\/ ·&]/gu,"").replace(/\s+/g," ").trim();
+let FILE=null;
+function loadXLSX(){return new Promise((ok,no)=>{if(window.XLSX)return ok();const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";sc.onload=()=>ok();sc.onerror=()=>no();document.head.appendChild(sc)})}
+function toDate(v){if(v instanceof Date)return v;if(typeof v==="number"){const d=new Date(Math.round((v-25569)*864e5));return new Date(d.getTime()+d.getTimezoneOffset()*6e4)}
+  const m=String(v||"").match(/(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/);return m?new Date(+m[1],+m[2]-1,+m[3]):null}
+function parseBook(aoa){
+  const hi=aoa.findIndex(r=>r&&r.some(c=>String(c).trim()==="날짜"));if(hi<0)return null;
+  const H=aoa[hi].map(c=>String(c||"").trim()),col=(...ns)=>{for(const n of ns){const i=H.indexOf(n);if(i>=0)return i}return -1};
+  const ci={d:col("날짜","일자","거래일"),c:col("분류","대분류","카테고리"),c2:col("소분류","중분류"),t:col("내용","적요","사용처","가맹점"),
+    v:col("KRW","금액","지출금액","이용금액"),io:col("수입/지출","구분","타입"),memo:col("메모"),tag:col("태그")};
+  if(ci.d<0||ci.v<0)return null;
+  return aoa.slice(hi+1).map(r=>{const d=toDate(r[ci.d]);if(!d||isNaN(d))return null;
+    const v=Math.round(Math.abs(parseFloat(String(r[ci.v]).replace(/[^\d.-]/g,""))||0));if(!v)return null;
+    const io=ci.io>=0?String(r[ci.io]||""):"지출";
+    const extra=[ci.memo,ci.tag].filter(i=>i>=0).map(i=>String(r[i]||"")).join(" ");
+    return {d,ds:`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,src:cleanCat(ci.c>=0?r[ci.c]:"")||"분류 없음",sub:cleanCat(ci.c2>=0?r[ci.c2]:""),
+      t:String(ci.t>=0?r[ci.t]||"":"").trim(),v,out:!/수입|입금/.test(io)&&!/이체/.test(io),ev:/이벤트비/.test(extra+" "+(ci.t>=0?r[ci.t]:""))}}).filter(Boolean)}
+function fileCatOptions(sel){return `<option value="__skip">넣지 않기</option>`+state.cfg.cats.map(c=>`<option value="${c.id}"${String(sel)===String(c.id)?" selected":""}></option>`).join("")}
+function drawFile(){if(!FILE)return;const map=get(PFX+"catMap")||{};
+  const from=$("fileFrom").value,mp=`${ym[0]}-${pad(ym[1])}`;
+  const rows=FILE.rows.filter(r=>r.out&&r.ds.startsWith(mp)&&r.ds>=from);
+  const srcs={};rows.forEach(r=>{srcs[r.src]=(srcs[r.src]||0)+r.v});
+  const box=$("fileMap");box.innerHTML="";
+  Object.keys(srcs).sort((a,b)=>srcs[b]-srcs[a]).forEach(src=>{
+    if(!(src in FILE.map)){const saved=map[src];let v;
+      if(saved==="__skip")v="__skip";else if(saved){const c=state.cfg.cats.find(x=>x.n===saved);v=c?c.id:"__skip"}
+      else if(SKIP_DEFAULT.some(x=>src.includes(x)))v="__skip";else{const c=matchCat(state.cfg.cats,src);v=c?c.id:"__skip"}
+      FILE.map[src]=v}
+    const l=document.createElement("span");l.innerHTML=`<span></span> <small>${man(srcs[src])}</small>`;l.firstChild.textContent=src;
+    const s=document.createElement("select");s.innerHTML=fileCatOptions(FILE.map[src]);[...s.options].slice(1).forEach((o,i)=>o.textContent=state.cfg.cats[i].n+(state.cfg.cats[i].sep?" (따로)":""));
+    s.onchange=()=>{FILE.map[src]=s.value;drawFile()};box.append(l,s)});
+  const exist=new Set(state.log.map(e=>`${e.d}|${e.v}|${normMemo(e.m)}`));
+  const list=$("fileRows");list.innerHTML="";let n=0,sum=0,dup=0;FILE.pick=[];
+  rows.sort((a,b)=>a.d-b.d).forEach((r,i)=>{const k=FILE.map[r.src];const isDup=exist.has(`${r.ds}|${r.v}|${normMemo(r.t)}`);if(isDup)dup++;
+    const key=r.ds+r.t+r.v+i;if(!(key in FILE.on))FILE.on[key]=!isDup&&k!=="__skip";if(!(key in FILE.evOn)){const b=BOOK[normMemo(r.t)];FILE.evOn[key]=r.ev||!!(b&&b.evn>0&&b.evn>=b.n/2)}
+    const on=FILE.on[key]&&k!=="__skip",c=cat(+k);
+    const row=document.createElement("div");row.className="frow"+(on?"":" off");
+    row.innerHTML=`<input type="checkbox" aria-label="이 지출 넣기"${on?" checked":""}${k==="__skip"?" disabled":""}><span class="fd">${r.d.getMonth()+1}/${r.d.getDate()}</span><span class="fm"><div></div><small></small></span><span><div class="fa">${won(r.v)}</div><label><input type="checkbox"${FILE.evOn[key]?" checked":""}${k==="__skip"?" disabled":""}>이벤트비</label></span>`;
+    row.querySelector(".fm div").textContent=r.t||r.sub||r.src;row.querySelector(".fm small").textContent=(k==="__skip"?"넣지 않음":c?c.n+(c.sep?" (따로)":""):"")+(isDup?" · 이미 있음":"")+` · ${r.src}`;
+    const [cb,ev]=row.querySelectorAll("input");cb.onchange=()=>{FILE.on[key]=cb.checked;drawFile()};ev.onchange=()=>{FILE.evOn[key]=ev.checked};
+    list.appendChild(row);if(on){n++;sum+=r.v;FILE.pick.push({r,k:+k,key})}});
+  $("fileCount").textContent=`${n}건 · ${won(sum)}원`+(dup?` (이미 있는 ${dup}건은 뺐어요)`:"");
+  if(!rows.length)list.innerHTML=`<p class="empty" style="padding:10px">이 날짜 이후 ${ym[1]}월 지출이 없어요.</p>`}
+$("fileIn").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{await loadXLSX()}catch(_){toast("파일을 읽는 도구를 불러오지 못했어요. 인터넷이 연결됐는지 확인해주세요.","fileMsg",true);return}
+  try{const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=parseBook(XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""}));
+    if(!rows||!rows.length){toast("날짜와 금액 칸을 찾지 못했어요. 맨 윗줄에 '날짜'와 '금액'(또는 KRW) 제목이 있는 파일인지 확인해주세요.","fileMsg",true);return}
+    FILE={rows,map:{},on:{},evOn:{}};BOOK=memoBook();
+    const mp=`${ym[0]}-${pad(ym[1])}`,mine=state.log.map(e=>e.d).filter(d=>d.startsWith(mp)).sort();
+    let from=`${mp}-01`;if(mine.length){const d=new Date(mine[mine.length-1]+"T00:00");d.setDate(d.getDate()+1);from=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`}
+    $("fileFrom").value=from;$("fileFromHint").textContent=mine.length?`(마지막으로 적은 날 ${+mine[mine.length-1].slice(8)}일 다음 날)`:"";
+    const inMonth=rows.filter(r=>r.ds.startsWith(mp)).length;
+    $("fileStep").hidden=false;drawFile();
+    toast(inMonth?`${rows.length}줄을 읽었어요. ${ym[1]}월 지출만 보여줘요.`:`이 파일에는 ${ym[1]}월 내역이 없어요. 위의 ‹ › 로 달을 옮겨주세요.`,"fileMsg",!inMonth)}
+  catch(err){toast("파일을 읽지 못했어요. 가계부 앱에서 내보낸 .xlsx나 .csv 파일인지 확인해주세요.","fileMsg",true)}};
+$("fileFrom").onchange=()=>{if(FILE){FILE.on={};drawFile()}};
+$("fileCancel").onclick=()=>{FILE=null;$("fileStep").hidden=true;$("fileIn").value=""};
+$("fileAdd").onclick=()=>{if(!FILE||!FILE.pick.length){toast("넣을 지출이 없어요.","fileMsg",true);return}
+  const map=get(PFX+"catMap")||{};for(const src in FILE.map){const v=FILE.map[src];map[src]=v==="__skip"?"__skip":(cat(+v)?cat(+v).n:"__skip")}put(PFX+"catMap",map);
+  snap();touch();const base=Date.now();let evn=0,sum=0;
+  rebuildWith(()=>{FILE.pick.forEach((p,i)=>{const ent={id:base+i,d:p.r.ds,k:p.k,v:p.r.v,m:p.r.t||p.r.sub};if(FILE.evOn[p.key]){ent.e=true;evn++}state.log.push(ent);sum+=p.r.v;state.ns=state.ns.filter(x=>x!==+p.r.ds.slice(8))})});
+  const n=FILE.pick.length;if(state.ev.length)evOpen=true;save();BOOK=memoBook();FILE=null;$("fileStep").hidden=true;$("fileIn").value="";render();
+  toast(`${n}건 ${won(sum)}원을 덧붙였어요`+(evn?` (이벤트비 ${evn}건 포함)`:"")+`. 칸은 날짜순으로 다시 칠했어요.`,"fileMsg");showMsg(`${n}건을 덧붙였어요.`)};
+
 $("doImp").onclick=()=>{
   const rows=parseSheet($("imp").value);
   if(!rows.length){toast("날짜와 금액이 있는 줄을 찾지 못했어요. 시트에서 날짜 칸부터 금액 칸까지 함께 복사해주세요.","impMsg",true);return}
